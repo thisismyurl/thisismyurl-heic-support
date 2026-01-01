@@ -1,30 +1,35 @@
 <?php
 /**
- * Uninstaller for heic support
- * .
- * 
- * Updated: 1.251229
- * 
+ * HEIC Support by thisismyurl.com - Uninstaller
+ * This script runs automatically when a user deletes the plugin via the WordPress dashboard.
  */
 
-
-
+// If uninstall not called from WordPress, exit.
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
     exit;
 }
 
-global $wp_filesystem;
-if ( empty( $wp_filesystem ) ) {
-    require_once ABSPATH . 'wp-admin/includes/file.php';
-    WP_Filesystem();
-}
+/**
+ * Determine the plugin slug.
+ * The core uses this slug to namespace all database entries.
+ */
+$plugin_slug = 'thisismyurl-heic-support';
 
-$upload_dir = wp_upload_dir();
-$backup_dir = $upload_dir['basedir'] . '/heic-backups/';
+// 1. Delete the primary plugin options
+// These include the 'enabled' toggle and the registration key.
+delete_option( $plugin_slug . '_options' );
 
-if ( $wp_filesystem->exists( $backup_dir ) ) {
-    $wp_filesystem->delete( $backup_dir, true );
-}
+// 2. Delete licensing and status transients
+// The core library caches license status and messages here.
+delete_transient( $plugin_slug . '_license_status' );
+delete_transient( $plugin_slug . '_license_msg' );
 
-delete_metadata( 'post', 0, '_heic_original_path', '', true );
-wp_cache_flush();
+// 3. Clear the shared tools cache
+// This ensures the "Other Tools" sidebar is refreshed for any other active TIMU plugins.
+delete_transient( 'timu_tools_cache' );
+
+/**
+ * NOTE: This plugin does not currently store specific post metadata.
+ * Files uploaded while the plugin was active remain in the Media Library, 
+ * but the automated conversion filtering will cease once the plugin is removed.
+ */
