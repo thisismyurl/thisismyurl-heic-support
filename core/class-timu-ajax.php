@@ -214,28 +214,6 @@ class TIMU_Ajax_v1 {
 
     
 
-    public function ajax_verify_license() {
-    check_ajax_referer( 'timu_install_nonce', 'nonce' );
-
-    $key = isset( $_POST['key'] ) ? sanitize_text_field( $_POST['key'] ) : '';
-    
-    // 1. Save the key so the core logic can see it
-    $options = get_option( $this->core->plugin_slug . '_options', array() );
-    $options['registration_key'] = $key;
-    update_option( $this->core->plugin_slug . '_options', $options );
-
-    // 2. Clear the cache to force a fresh remote API check
-    delete_transient( $this->core->plugin_slug . '_license_status' );
-
-    // 3. Run the core check which now populates $this->core->license_message
-    if ( $this->core->is_licensed() ) {
-        wp_send_json_success( array( 'message' => $this->core->license_message ) );
-    } else {
-        // Send the error message from the JSON response
-        wp_send_json_error( array( 'message' => $this->core->license_message ) );
-    }
-}
-
 
     /**
      * Internal: Resolve metadata prefix based on plugin context.

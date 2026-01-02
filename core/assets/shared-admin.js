@@ -1,7 +1,7 @@
 /**
  * TIMU Shared Admin UI
  * Handles visibility, color pickers, media uploader, and native WP controls.
- * Version: 1.26010214
+ * Version: 1.26010216
  */
 jQuery(document).ready(function($) {
     'use strict';
@@ -110,51 +110,6 @@ jQuery(document).ready(function($) {
                 $btn.text(isPassword ? 'Hide' : 'Show');
             });
 
-           // Inside shared-admin.js -> bindEvents -> AJAX License Verification
-$(document).on('click', '#timu-ajax-verify-key', function(e) {
-    e.preventDefault();
-    const $btn = $(this);
-    const $spinner = $btn.siblings('.spinner');
-    const $status = $('#timu-license-status-display');
-    const key = $('#timu_reg_key').val().trim();
-
-    if (!key) {
-        $status.text('Please enter a key first.').css('color', '#d63638');
-        return;
-    }
-
-    $btn.prop('disabled', true);
-    $spinner.addClass('is-active');
-
-    // CONSTRUCT URL FOR DEBUGGING
-    const debugUrl = 'https://thisismyurl.com/wp-json/license-manager/v1/check/' + 
-                     '?url=' + encodeURIComponent(window.location.origin) + 
-                     '&item=' + encodeURIComponent(timu_core_vars.slug) + // Note: Add slug to vars below
-                     '&key=' + encodeURIComponent(key);
-
-    console.log('Verifying License at: ', debugUrl);
-
-    $.post(timu_core_vars.ajax_url, {
-        action: 'timu_verify_license',
-        nonce: timu_core_vars.nonce,
-        key: key
-    }, function(response) {
-        $btn.prop('disabled', false);
-        $spinner.removeClass('is-active');
-        
-        // Display the URL we just checked below the status for visibility
-        if (!$('#timu-debug-url').length) {
-            $status.after('<p id="timu-debug-url" style="font-size:10px; color:#999; word-break:break-all;"></p>');
-        }
-        $('#timu-debug-url').text('Checked: ' + response.data.debug_url);
-
-        if (response.success) {
-            $status.text(response.data.message).css('color', '#46b450');
-        } else {
-            $status.text(response.data.message).css('color', '#d63638');
-        }
-    });
-});
         }
     };
 
