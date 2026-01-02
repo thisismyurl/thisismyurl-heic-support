@@ -68,6 +68,9 @@ Navigate to Media > HEIC Support to access the dashboard.
 n
 = 1.260102 =
 * Updated core library to version 1.260102
+n
+= 1.260102 =
+* Updated core library to version 1.260102
 
 = 1.251229 =
 
