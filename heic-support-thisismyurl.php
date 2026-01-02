@@ -9,7 +9,7 @@
  * Description:         Safely enable HEIC uploads and convert existing images to AVIF format.
  * Tags:                heic, uploads, media library, optimization
  * 
- * Version:             1.26010216
+ * Version:             1.26010217
  * Requires at least:   5.3
  * Requires PHP:        7.4
  * 
@@ -151,8 +151,8 @@ class TIMU_HEIC_Support extends TIMU_Core_v1 {
 				'fields' => array(
 					'enabled'       => array(
 						'type'      => 'switch',
-						'label'     => __( 'Enable HEIC Uploads', 'heic-support-thisismyurl' ),
-						'desc'      => __( 'Allows .heic files in the Media Library.', 'heic-support-thisismyurl' ),
+						'label'     => __( 'Enable HEIC Support', 'heic-support-thisismyurl' ),
+						'desc'      => __( 'Allows .heic files to be processed by this plugin.', 'heic-support-thisismyurl' ),
 						'is_parent' => true,
 						'default'   => 1,
 					),
