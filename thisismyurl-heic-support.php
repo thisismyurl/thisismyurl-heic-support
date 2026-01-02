@@ -9,7 +9,7 @@
  * Description:         Safely enable HEIC uploads and convert them to WebP or AVIF format with a centralized settings dashboard.
  * Tags:                heic, uploads, media library, conversion
  * 
- * Version:             1.260101
+ * Version: 1.260102
  * Requires at least:   5.3
  * Requires PHP:        7.4
  * 
