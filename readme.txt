@@ -8,7 +8,7 @@ Support Link: https://thisismyurl.com/contact/
 Tags: heic, heif, optimization, ios images, webp, apple images 
 Requires at least: 6.0 
 Tested up to: 6.9 
-Stable tag: 1.251229 
+Stable tag: 1.260102
 License: GPLv2 or later 
 License URI: https://www.gnu.org/licenses/gpl-2.0.html 
 GitHub Plugin URI: https://github.com/thisismyurl/thisismyurl-heic-support/ 
@@ -65,6 +65,9 @@ Navigate to Media > HEIC Support to access the dashboard.
 = Does this support HEIF formats? = Yes! The conversion engine handles both .heic and .heif files from modern smartphones.
 
 == Changelog ==
+n
+= 1.260102 =
+* Updated core library to version 1.260102
 
 = 1.251229 =
 
