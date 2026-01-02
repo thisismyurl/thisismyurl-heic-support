@@ -69,15 +69,15 @@ public function setup_plugin() {
 
     // Build options dynamically based on active plugins
     $format_options = array(
-        'none' => __( 'No Conversion', 'thisismyurl-heic-support' ),
+        'none' => __( 'Upload as .heic files.', 'thisismyurl-heic-support' ),
     );
 
     if ( $webp_active ) {
-        $format_options['webp'] = __( 'WebP', 'thisismyurl-heic-support' );
+        $format_options['webp'] = __( 'Convert to .webp file format.', 'thisismyurl-heic-support' );
     }
 
     if ( $avif_active ) {
-        $format_options['avif'] = __( 'AVIF', 'thisismyurl-heic-support' );
+        $format_options['avif'] = __( 'Convert to .avif file format.', 'thisismyurl-heic-support' );
     }
 
     $blueprint = array(
@@ -99,7 +99,7 @@ public function setup_plugin() {
                     'options'   => $format_options,
                     'default'   => $webp_active ? 'webp' : 'none',
                     'desc'      => ( !$webp_active || !$avif_active ) 
-                                   ? __( 'Install WebP or AVIF Support plugins to enable more formats.', 'thisismyurl-heic-support' ) 
+                                   ? __( 'Install  <a href="https://thisismyurl.com/thisismyurl-webp-support/">WebP Support</a> or  <a href="https://thisismyurl.com/thisismyurl-avif-support/">AVIF Support</a> plugins to enable the formats.', 'thisismyurl-heic-support' ) 
                                    : ''
                 ),
                 'webp_quality' => array(
