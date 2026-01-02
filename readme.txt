@@ -67,6 +67,42 @@ Navigate to Media > HEIC Support to access the dashboard.
 == Changelog ==
 
 = 1.26010217 =
+* Core hierarchy updated via core\class-timu-admin.php
+
+= 1.26010217 =
+* Core hierarchy updated via heic-support-thisismyurl\core
+
+= 1.26010217 =
+* Core hierarchy updated via core\class-timu-admin.php
+
+= 1.26010217 =
+* Core hierarchy updated via core\class-timu-admin.php
+
+= 1.26010217 =
+* Core hierarchy updated via core\class-timu-admin.php
+
+= 1.26010217 =
+* Core hierarchy updated via heic-support-thisismyurl\core
+
+= 1.26010217 =
+* Core hierarchy updated via core\class-timu-admin.php
+
+= 1.26010217 =
+* Core hierarchy updated via heic-support-thisismyurl\core\class-timu-ajax.php
+
+= 1.26010217 =
+* Core hierarchy updated via core\class-timu-admin.php
+
+= 1.26010217 =
+* Core hierarchy updated via core\class-timu-admin.php
+
+= 1.26010217 =
+* Core hierarchy updated via core\class-timu-admin.php
+
+= 1.26010217 =
+* Core hierarchy updated via core\class-timu-admin.php
+
+= 1.26010217 =
 * Core hierarchy updated via heic-support-thisismyurl\core
 
 = 1.26010217 =
