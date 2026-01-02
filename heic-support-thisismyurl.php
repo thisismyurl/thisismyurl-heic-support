@@ -1,15 +1,29 @@
 <?php
 /**
- * TIMU HEIC Support Plugin
- *
- * This plugin enables support for High Efficiency Image Container (HEIC/HEIF) uploads 
- * within the WordPress Media Library. It utilizes the TIMU Shared Core to facilitate 
- * server-side conversion into raster formats like WebP or AVIF via Imagick.
- *
- * @package    TIMU_HEIC_Support
- * @author     Christopher Ross <https://thisismyurl.com/>
- * @version    1.260102
- * @license    GPL-2.0+
+ * Author:              Christopher Ross
+ * Author URI:          https://thisismyurl.com/?source=heic-support-thisismyurl
+ * Plugin Name:         HEIC Support by thisismyurl.com
+ * Plugin URI:          https://thisismyurl.com/heic-support-thisismyurl/?source=heic-support-thisismyurl
+ * Donate link:         https://thisismyurl.com/donate/?source=heic-support-thisismyurl
+ * 
+ * Description:         Safely enable HEIC uploads and convert existing images to AVIF format.
+ * Tags:                heic, uploads, media library, optimization
+ * 
+ * Version:             1.260101
+ * Requires at least:   5.3
+ * Requires PHP:        7.4
+ * 
+ * Update URI:          https://github.com/thisismyurl/heic-support-thisismyurl
+ * GitHub Plugin URI:   https://github.com/thisismyurl/heic-support-thisismyurl
+ * Primary Branch:      main
+ * Text Domain:         heic-support-thisismyurl
+ * 
+ * License:             GPL2
+ * License URI:         https://www.gnu.org/licenses/gpl-2.0.html
+ * 
+ * @package TIMU_AVIF_Support
+ * 
+ * 
  */
 
 /**
@@ -76,6 +90,9 @@ class TIMU_HEIC_Support extends TIMU_Core_v1 {
 		 * Activation: Define default options to ensure an immediate working state.
 		 */
 		register_activation_hook( __FILE__, array( $this, 'activate_plugin_defaults' ) );
+
+
+		add_action( 'timu_sidebar_under_banner', array( $this, 'render_default_sidebar_actions' ) );
 	}
 
 	/**
@@ -111,7 +128,7 @@ class TIMU_HEIC_Support extends TIMU_Core_v1 {
 		 * Build radio options dynamically based on the presence of sibling plugins.
 		 */
 		$format_options = array(
-			'none' => __( 'Upload as .heic files.', 'heic-support-thisismyurl' ),
+			'heic' => __( 'Upload as .heic files.', 'heic-support-thisismyurl' ),
 		);
 
 		if ( $webp_active ) {
@@ -144,19 +161,32 @@ class TIMU_HEIC_Support extends TIMU_Core_v1 {
 									? __( 'Install <a href="https://thisismyurl.com/thisismyurl-webp-support/">WebP</a> or <a href="https://thisismyurl.com/thisismyurl-avif-support/">AVIF</a> plugins for more options.', 'heic-support-thisismyurl' )
 									: __( 'Choose how to process HEIC files upon upload.', 'heic-support-thisismyurl' ),
 					),
+					'heic_quality'  => array(
+						'type'         => 'number',
+						'label'        => __( 'HEIC Quality', 'svg-support-thisismyurl' ),
+						'default'      => 80,
+						'show_if' => array(
+							'field' => 'target_format', // Must match the ID of your radio buttons
+							'value' => 'heic'           // Must match the value 'webp' in the radio option
+						)
+					),
 					'webp_quality'  => array(
 						'type'         => 'number',
-						'label'        => __( 'WebP Quality', 'heic-support-thisismyurl' ),
-						'parent'       => 'target_format',
-						'parent_value' => 'webp',
+						'label'        => __( 'WebP Quality', 'svg-support-thisismyurl' ),
 						'default'      => 80,
+						'show_if' => array(
+							'field' => 'target_format', // Must match the ID of your radio buttons
+							'value' => 'webp'           // Must match the value 'webp' in the radio option
+						)
 					),
 					'avif_quality'  => array(
 						'type'         => 'number',
-						'label'        => __( 'AVIF Quality', 'heic-support-thisismyurl' ),
-						'parent'       => 'target_format',
-						'parent_value' => 'avif',
+						'label'        => __( 'AVIF Quality', 'svg-support-thisismyurl' ),
 						'default'      => 60,
+						'show_if' => array(
+							'field' => 'target_format', // Must match the ID of your radio buttons
+							'value' => 'avif'           // Must match the value 'webp' in the radio option
+						)
 					),
 				),
 			),
