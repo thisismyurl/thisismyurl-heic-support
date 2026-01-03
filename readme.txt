@@ -14,28 +14,6 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 GitHub Plugin URI: https://github.com/thisismyurl/thisismyurl-heic-support/ 
 Primary Branch: main 
 
-Plugin Review
-The HEIC Support by thisismyurl.com is a critical tool for modern WordPress users, especially those capturing content on iPhones and modern mobile devices. By default, WordPress often struggles to display or even accept HEIC/HEIF files, leading to "broken" uploads for mobile-first bloggers.
-
-This plugin solves that problem through intelligent intercept logic. By hooking into the wp_handle_upload lifecycle, it allows users to keep their high-efficiency mobile workflow while ensuring the web-facing result is highly compatible and lightning-fast. The standout feature is its Multi-Codec Conversion Pipeline; it doesn't just "enable" HEIC, it offers a pathway to convert those files into industry-leading WebP or AVIF formats, ensuring maximum site speed and SEO performance.
-
-readme.txt
-Plaintext
-
-=== HEIC Support by thisismyurl.com ===
-Contributors: thisismyurl
-Author: Christopher Ross
-Author URI: https://thisismyurl.com/
-Tags: heic, heif, iphone, optimization, webp, avif, mobile-upload
-Requires at least: 5.3
-Tested up to: 6.4
-Stable tag: 1.260102
-License: GPLv2 or later
-License URI: https://www.gnu.org/licenses/gpl-2.0.html
-Donate link: https://thisismyurl.com/heic-support-thisismyurl/#register
-GitHub Plugin URI: https://github.com/thisismyurl/heic-support-thisismyurl
-Primary Branch: main
-
 Bypass mobile upload errors and supercharge your site speed. Seamlessly enable HEIC/HEIF uploads from iPhones and automate conversion to next-gen WebP or AVIF formats.
 
 == Description ==
