@@ -1,4 +1,4 @@
-=== HEIC Support by thisismyurl.com === 
+﻿=== HEIC Support by thisismyurl.com === 
 
 Contributors: thisismyurl 
 Author: thisismyurl 
@@ -55,13 +55,21 @@ This plugin uses your server's ImageMagick (Imagick) library. Most modern hosts 
 
 == Changelog ==
 
-= 1.26010222 =
-* Core hierarchy updated via heic-support-thisismyurl\readme.txt
-
-
 = 1.260102 =
 
 * Core hierarchy updated via Initial Launch.
 * Added support for .heic and .heif MIME types.
 * Implemented dynamic conversion paths for WebP and AVIF formats.
 * Integrated precision quality sliders for optimized output.
+
+
+== Roadmap ==
+* [Issue] Setting to Remove EXIF Thumbnail Data
+* [Issue] Setting to Remove EXIF Location Data
+* [Issue] Setting to Remove EXIF Privacy Data
+* [Issue] Setting to Add Descriptive Metadata
+* [Issue] Setting to Add Copyright and Ownership
+* [Issue] Setting to Add Source URL
+* [Issue] Setting to Add Modification Date
+
+==

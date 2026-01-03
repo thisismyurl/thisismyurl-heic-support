@@ -34,7 +34,7 @@ Visit [https://thisismyurl.com/heic-support-thisismyurl/#register](https://thisi
 This plugin uses your server's ImageMagick (Imagick) library. Most modern hosts support HEIC by default, but you can verify your server status inside the plugin dashboard.
 
 ## 🗺️ Roadmap & Activity
-
+https://github.com/thisismyurl/heic-support-thisismyurl/issues/2 https://github.com/thisismyurl/heic-support-thisismyurl/issues/3 https://github.com/thisismyurl/heic-support-thisismyurl/issues/4 https://github.com/thisismyurl/heic-support-thisismyurl/issues/5 https://github.com/thisismyurl/heic-support-thisismyurl/issues/6 https://github.com/thisismyurl/heic-support-thisismyurl/issues/7 https://github.com/thisismyurl/heic-support-thisismyurl/issues/8 
 
 ---
 ([char]0x00A9) 2026 [thisismyurl](https://thisismyurl.com)
