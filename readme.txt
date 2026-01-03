@@ -1,4 +1,4 @@
-﻿=== HEIC Support by thisismyurl.com === 
+=== HEIC Support by thisismyurl.com === 
 
 Contributors: thisismyurl 
 Author: thisismyurl 
@@ -8,7 +8,7 @@ Support Link: https://thisismyurl.com/contact/
 Tags: heic, heif, optimization, ios images, webp, apple images 
 Requires at least: 6.0 
 Tested up to: 6.9 
-Stable tag: 1.260102
+Stable tag: 1.26010222
 License: GPLv2 or later 
 License URI: https://www.gnu.org/licenses/gpl-2.0.html 
 GitHub Plugin URI: https://github.com/thisismyurl/thisismyurl-heic-support/ 
@@ -54,6 +54,114 @@ Visit [https://thisismyurl.com/heic-support-thisismyurl/#register](https://thisi
 This plugin uses your server's ImageMagick (Imagick) library. Most modern hosts support HEIC by default, but you can verify your server status inside the plugin dashboard.
 
 == Changelog ==
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\readme.txt
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\heic-support-thisismyurl.php
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\readme.txt
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\heic-support-thisismyurl.php
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\heic-support-thisismyurl.php
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\core\2682333820516292531891922458163187249407.ico
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\heic-support-thisismyurl.php
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\core\icons
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\readme.txt
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\core\class-timu-processor.php
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\core\icons\default.ico
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\core\icons\original icons\git-push.png
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\core\icons
+
+= 1.26010222 =
+* Core hierarchy updated via core\assets\shared-bulk.js
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\readme.txt
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\readme.txt
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\core\icons
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\heic-support-thisismyurl.php
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\heic-support-thisismyurl.php
+
+= 1.26010222 =
+* Core hierarchy updated via Initial Launch
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\heic-support-thisismyurl.php
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\core
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\heic-support-thisismyurl.php
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\core\icons\original icons
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\heic-support-thisismyurl.php
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\core
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\heic-support-thisismyurl.php
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\core
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\heic-support-thisismyurl.php
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\heic-support-thisismyurl.php
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\heic-support-thisismyurl.php
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\core\icons\original icons
+
+= 1.26010222 =
+* Core hierarchy updated via heic-support-thisismyurl\core
+
+= 1.26010222 =
+* Core hierarchy updated via core\assets\shared-admin.css
+
+= 1.26010222 =
+* Core hierarchy updated via Initial Launch
+
+= 1.26010222 =
+* Core hierarchy updated via Initial Launch
 
 = 1.260102 =
 * Core hierarchy updated via heic-support-thisismyurl\core\icons\original icons\git-commit.png
