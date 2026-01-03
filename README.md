@@ -37,4 +37,4 @@ This plugin uses your server's ImageMagick (Imagick) library. Most modern hosts 
 
 
 ---
-Â© 2026 [thisismyurl](https://thisismyurl.com)
+([char]0x00A9) 2026 [thisismyurl](https://thisismyurl.com)
