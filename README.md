@@ -1,7 +1,7 @@
-﻿# heic-support-thisismyurl
+﻿# HEIC Support by thisismyurl.com
 ![Version](https://img.shields.io/badge/version-1.260102-blue.svg)
 
-Professional WordPress plugin.
+Bypass mobile upload errors and supercharge your site speed. Seamlessly enable HEIC/HEIF uploads from iPhones and automate conversion to next-gen WebP or AVIF formats.
 
 ## ðŸ—ºï¸ Roadmap & Activity
 
