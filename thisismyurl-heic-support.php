@@ -3,7 +3,7 @@
  * Plugin Name:       HEIC Support by thisismyurl.com
  * Plugin URI:        https://thisismyurl.com/thisismyurl-heic-support/
  * Description:       Automatically convert HEIC/HEIF images from iOS devices to WebP with secure backups.
- * Version:           0.6112
+ * Version:           0.6147
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Christopher Ross

@@ -6,6 +6,8 @@ A free, non-destructive HEIC to WebP converter for WordPress. Automatically opti
 
 Modern iOS devices capture images in HEIC/HEIF formats that are often incompatible with web browsers. This plugin converts those images to WebP at upload time, significantly reducing file size while maintaining visual quality.
 
+> **Part of the This Is My URL image toolkit:** [Image Support](https://github.com/thisismyurl/thisismyurl-image-support) for library-wide filename cleanup, content-reference syncing, photo credits, and alt text; [WebP Support](https://github.com/thisismyurl/thisismyurl-webp-support) and [HEIC Support](https://github.com/thisismyurl/thisismyurl-heic-support) for focused format conversion; and [SVG Support](https://github.com/thisismyurl/thisismyurl-svg-support) for safe SVG uploads. Reach for a focused plugin if you only need that format; use Image Support for library-wide work.
+
 ## Features
 
 - **Automatic conversion:** New HEIC and HEIF uploads are converted to WebP the moment they hit your Media Library.
