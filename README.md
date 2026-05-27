@@ -1,4 +1,6 @@
-# HEIC Support by This Is My URL
+# HEIC Support by thisismyurl.com
+
+[![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-blue)](https://wordpress.org/) [![License](https://img.shields.io/badge/License-GPL--2.0-blue)](LICENSE)
 
 A free, non-destructive HEIC to WebP converter for WordPress. Automatically optimizes Apple device uploads with secure backups and one-click restore.
 
@@ -25,81 +27,82 @@ Modern iOS devices capture images in HEIC/HEIF formats that are often incompatib
 3. Go to **Tools > HEIC Support**.
 4. Run bulk conversion on your existing library or enable auto-conversion on upload.
 
-## How Backup and Restore Works
+## How backup and restore works
 
 On conversion, the original HEIC file is moved to `uploads/heic-backups/`. The attachment is updated to point to the new `.webp` file. Restoring moves the original back and restores all attachment metadata.
 
 ## Versioning
 
 This plugin uses the format `1.Yddd`:
+
 - `Y` = last digit of the year
 - `ddd` = Julian day number
 
 ## Standards
 
-- Direct access protection with ABSPATH checks.
+- Direct-access protection with `ABSPATH` checks.
 - Nonce and capability checks for AJAX and admin actions.
-- Escaping and sanitization aligned with WordPress coding standards.
+- Escaping and sanitisation aligned with WordPress coding standards.
+
+## Changelog
+
+See [releases](../../releases) or [readme.txt](readme.txt).
 
 ---
 
-## Support and Contribute
+## Support and donations
 
-### Ways to Support
+I build these tools because WordPress sites in the wild keep hitting the same problems, and a small, focused plugin is usually the right fix. They're free to use, with no tracking and no ads.
 
-I'm building these tools because WordPress developers and site owners deserve straightforward, practical solutions. There's no tracking, no ads, and you don't need to pay to use these plugins.
+If one of them saves you time, here are the genuine ways to help:
 
-If you find them helpful, here are some genuine ways to support the work:
+- **Sponsor the work.** [GitHub Sponsors](https://github.com/sponsors/thisismyurl) is the simplest way, and the Sponsor button at the top of this repo lists it alongside Bitcoin, Dogecoin, PayPal, and Interac e-transfer. Any amount helps, and none of it is expected.
+- **Contribute code or ideas.** A pull request, a bug report, or a tested edge case is worth as much as a donation. See [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+- **Share it.** A note on [WordPress.org](https://profiles.wordpress.org/thisismyurl/), [GitHub](https://github.com/thisismyurl), or [LinkedIn](https://linkedin.com/in/thisismyurl) helps other people find work that might save them the same afternoon.
 
-- **Sponsor if it fits your budget:** You can sponsor the project through [GitHub Sponsors](https://github.com/sponsors/thisismyurl). Sponsorship helps, but it's always optional.
-- **Contribute code or ideas:** Opening a pull request, reporting an issue, or testing edge cases is just as valuable as sponsorship. Helping me improve these plugins is a great way to contribute.
-- **Share your experience:** A review on [my Google My Business profile]([Add your Google Business Profile URL here]) or a follow on [WordPress.org](https://profiles.wordpress.org/thisismyurl/), [GitHub](https://github.com/thisismyurl), or [LinkedIn](https://linkedin.com/in/thisismyurl) helps others find this work.
+### Report issues and questions
 
-### Report Issues and Questions
+- **Found a bug or want a feature?** Open an issue on the [Issues](../../issues) tab. Include your WordPress and PHP versions and the steps to reproduce it.
+- **Have a question?** Start a thread on the [Discussions](../../discussions) tab.
 
-Found a bug? Want to suggest a feature? Just curious how something works?
+### Contributing code
 
-- **File an issue:** Use the [Issues](../../issues) tab. Include your WordPress and PHP version, and steps to reproduce.
-- **Start a discussion:** Use the [Discussions](../../discussions) tab for questions, ideas, or general conversation about the plugin.
+Code contributions are welcome. The short version:
 
-### Contributing Code
+1. Fork the repository and clone your fork.
+2. Create a branch with a clear name, like `feature/short-descriptive-name`.
+3. Make your change and test it against the edge cases.
+4. Run the coding-standards check before you open the pull request.
+5. Open a pull request that explains what changed and why.
 
-Code contributions are welcome and genuinely valuable. Here's the workflow:
-
-1. **Fork this repository** and clone it locally.
-2. **Create a feature branch** with a clear name (e.g., `feature/improve-safety-check`).
-3. **Make your changes** and test thoroughly on edge cases.
-4. **Follow WordPress coding standards** — run `composer run lint:phpcs` before opening a PR.
-5. **Open a pull request** with a clear description of what changed and why.
-
-I review PRs thoughtfully and appreciate well-tested contributions. Contributing is never required, but it's genuinely helpful.
-
----
-
+The full workflow and standards live in [CONTRIBUTING.md](CONTRIBUTING.md). Contributing is never required, but it is always appreciated.
 
 ## About This Is My URL
 
-This plugin supports the work I do at [This Is My URL](https://thisismyurl.com/wordpress-website-development/), where I help WordPress teams build secure, performant, and maintainable sites.
+This plugin is built and maintained by [This Is My URL](https://thisismyurl.com/), the WordPress development and technical SEO practice of Christopher Ross. I help teams build WordPress sites that stay secure, fast, and maintainable, and I write small, focused plugins like this one for the problems those sites keep running into.
 
-This plugin is built and maintained by [This Is My URL](https://thisismyurl.com/), a WordPress development and technical SEO practice. I'm Christopher Ross, a WordPress developer and technical SEO specialist with 30 years of experience on the open web (since 1996) and 19 years on WordPress (since 2007).
+### My background
 
-### My Background
+- On the web since 1996, and in WordPress since 2007
+- WordPress.org plugin developer with 19 plugins published since 2009
+- Technical SEO practitioner focused on performance, security, and search visibility
+- Lead instructor and curriculum architect at the M.L. Campbell Training Center, the Sherwin-Williams® international training facility for its industrial wood division
 
-- **30 years on the open web** (since 1996), with 19 of those years on WordPress (since 2007)
-- **WordPress contributor since 2007** with a strong track record helping organizations build practical, maintainable web systems
-- **Technical SEO practitioner** helping sites improve performance, security, and search visibility
-- **Training specialist** focused on practical outcomes and helping teams adopt technology with confidence
+### Ways to connect
 
-I believe in straightforward solutions that work. No hype. No unnecessary complexity.
-
-### Ways to Connect
-
-- **WordPress.org profile:** [profiles.wordpress.org/thisismyurl](https://profiles.wordpress.org/thisismyurl/)
-- **GitHub:** [github.com/thisismyurl](https://github.com/thisismyurl)
 - **Website:** [thisismyurl.com](https://thisismyurl.com/)
+- **WordPress.org:** [profiles.wordpress.org/thisismyurl](https://profiles.wordpress.org/thisismyurl/)
+- **GitHub:** [github.com/thisismyurl](https://github.com/thisismyurl)
 - **LinkedIn:** [linkedin.com/in/thisismyurl](https://linkedin.com/in/thisismyurl)
 
+## Contributors
+
+- **Christopher Ross** ([@thisismyurl](https://github.com/thisismyurl)) — author and maintainer
+- Thanks to everyone who has reported issues, tested edge cases, and contributed code
 
 ## License
 
 GPL-2.0-or-later — see [LICENSE](LICENSE) or [gnu.org/licenses/gpl-2.0.html](https://www.gnu.org/licenses/gpl-2.0.html).
+
+---
+*This project follows the [10 Core Pillars](PILLARS.md). Support quality work [here](https://github.com/sponsors/thisismyurl).*
