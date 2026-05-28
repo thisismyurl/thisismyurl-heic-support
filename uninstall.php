@@ -1,13 +1,9 @@
 <?php
 /**
- * Uninstaller for heic support
- * .
- * 
- * Updated: 1.251229
- * 
+ * Uninstaller for HEIC Support by thisismyurl.com.
+ *
+ * @package TIMU_HEIC_Support
  */
-
-
 
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
     exit;
@@ -21,10 +17,13 @@ if ( empty( $wp_filesystem ) ) {
 
 $upload_dir = wp_upload_dir();
 $backup_dir = $upload_dir['basedir'] . '/heic-backups/';
+$options    = get_option( 'timu_heic_support_options', array() );
 
-if ( $wp_filesystem->exists( $backup_dir ) ) {
+if ( ! empty( $options['delete_backups_uninstall'] ) && $wp_filesystem && $wp_filesystem->exists( $backup_dir ) ) {
     $wp_filesystem->delete( $backup_dir, true );
 }
 
 delete_metadata( 'post', 0, '_heic_original_path', '', true );
+delete_metadata( 'post', 0, '_heic_savings', '', true );
+delete_option( 'timu_heic_support_options' );
 wp_cache_flush();
