@@ -96,6 +96,10 @@ I review PRs thoughtfully and appreciate well-tested contributions. Contributing
 
 == Changelog ==
 
+= 0.6148 =
+* Added WordPress 7.0 Abilities API support: the `thisismyurl-heic-support/convert` ability batch-converts existing HEIC/HEIF library images to WebP (REST/AI-invokable, manage_options only).
+* Implemented the HEIC/HEIF to WebP conversion engine with non-destructive backups (originals moved to /uploads/heic-backups/ and recorded in _heic_original_path).
+
 = 0.6147 =
 * Unified plugin versioning to the x.Yddd calendar-version scheme.
 * Confirmed compatibility with WordPress 7.0.
