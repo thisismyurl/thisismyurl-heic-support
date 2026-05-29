@@ -1454,11 +1454,11 @@ add_action(
         }
 
         require_once $updater_path;
-        if ( ! function_exists( 'timu_boot_github_release_updater' ) ) {
+        if ( ! class_exists( '\ThisIsMyURL\HEIC\GitHubReleaseUpdater' ) ) {
             return;
         }
 
-        timu_boot_github_release_updater(
+        \ThisIsMyURL\HEIC\GitHubReleaseUpdater::boot(
             array(
                 'plugin_file' => __FILE__,
                 'slug'        => 'thisismyurl-heic-support',
