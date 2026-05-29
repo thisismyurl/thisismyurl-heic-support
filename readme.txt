@@ -7,7 +7,7 @@ Tags: heic, heif, webp, ios images, optimization
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 0.6148.2110
+Stable tag: 0.6149.0734
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 GitHub Plugin URI: https://github.com/thisismyurl/thisismyurl-heic-support/
