@@ -86,6 +86,11 @@ Yes. `wp heic convert <id|--all>`, `wp heic restore <id|--all>`, `wp heic status
 
 == Changelog ==
 
+= 0.6149 =
+* Security: replaced the bundled GitHub updater with the hardened release updater shared with WebP Support — the `after_install` relocation now only fires for this plugin's own update, and the GitHub API request carries a timeout, a User-Agent header, a 200-response check, and a 6-hour cache.
+* Accessibility: the bulk-convert progress bar now exposes `role="progressbar"` with live `aria-valuenow`, paired with a polite `role="status"` region announcing conversion progress.
+* Accessibility: the "File Missing" status carries a non-colour cue, and the Quality Preset radios are grouped in a `fieldset`/`legend`.
+
 = 0.6148 =
 * Rebuilt the conversion engine on the WebP Support architecture: a single Imagick decode/encode routine now serves the upload prefilter, the batch library walk, the WP-CLI commands, and the abilities.
 * Added auto-convert on upload: new HEIC/HEIF uploads are converted to WebP, with the original archived and restore parity preserved (toggle in settings).

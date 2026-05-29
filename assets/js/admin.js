@@ -31,8 +31,12 @@ jQuery( function ( $ ) {
     function updateProgress( total ) {
         var shown = Math.min( total, Math.max( 0, displayCompleted ) );
         var pct = total > 0 ? Math.round( ( shown / total ) * 100 ) : 100;
+        var label = pct + '% (' + Math.round( shown ) + '/' + total + ')';
         $( '#fwo-progress-bar' ).css( 'width', pct + '%' );
-        $( '#fwo-progress-text' ).text( pct + '% (' + Math.round( shown ) + '/' + total + ')' );
+        $( '#fwo-progress-text' ).text( label );
+        // Keep the progressbar's accessible value in sync with the visual width.
+        $( '#fwo-progress-container' ).attr( 'aria-valuenow', pct );
+        $( '#fwo-progress-status' ).text( label );
         $( '#p-cnt' ).text( Math.max( 0, total - Math.round( shown ) ) );
     }
 

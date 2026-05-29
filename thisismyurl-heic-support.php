@@ -12,9 +12,6 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       thisismyurl-heic-support
  * Domain Path:       /languages
- * GitHub Plugin URI: https://github.com/thisismyurl/thisismyurl-heic-support
- * Primary Branch:    main
- * Update URI:        https://github.com/thisismyurl/thisismyurl-heic-support
  * Donate link:       https://thisismyurl.com/donate/
  *
  * @package TIMU_HEIC_Support
@@ -1114,10 +1111,17 @@ class TIMU_HEIC_Support {
                                         </button>
                                     </div>
 
-                                    <div id="fwo-progress-container" style="display:none;margin-top:20px;background:#f0f0f1;height:30px;position:relative;border-radius:4px;overflow:hidden;border:1px solid #c3c4c7;">
+                                    <div id="fwo-progress-container"
+                                        role="progressbar"
+                                        aria-label="<?php esc_attr_e( 'Conversion progress', 'thisismyurl-heic-support' ); ?>"
+                                        aria-valuemin="0"
+                                        aria-valuemax="100"
+                                        aria-valuenow="0"
+                                        style="display:none;margin-top:20px;background:#f0f0f1;height:30px;position:relative;border-radius:4px;overflow:hidden;border:1px solid #c3c4c7;">
                                         <div id="fwo-progress-bar" style="background:#2271b1;height:100%;width:0%;transition:width 0.2s;"></div>
                                         <div id="fwo-progress-text" style="position:absolute;width:100%;text-align:center;top:0;line-height:30px;font-weight:bold;color:#fff;mix-blend-mode:difference;">0%</div>
                                     </div>
+                                    <div id="fwo-progress-status" role="status" aria-live="polite" class="screen-reader-text"></div>
                                     <?php if ( $pending_bytes > 0 || $managed_savings > 0 ) : ?>
                                     <p class="description" style="margin-top:14px;">
                                         <?php
@@ -1156,6 +1160,8 @@ class TIMU_HEIC_Support {
                                         <tr>
                                             <th scope="row"><?php esc_html_e( 'Quality Preset', 'thisismyurl-heic-support' ); ?></th>
                                             <td>
+                                                <fieldset>
+                                                <legend class="screen-reader-text"><?php esc_html_e( 'Quality Preset', 'thisismyurl-heic-support' ); ?></legend>
                                                 <?php
                                                 $quality_presets = array(
                                                     'web'      => __( 'Web (82) — balanced size/quality', 'thisismyurl-heic-support' ),
@@ -1175,6 +1181,7 @@ class TIMU_HEIC_Support {
                                                         <?php echo esc_html( $label ); ?>
                                                     </label>
                                                 <?php endforeach; ?>
+                                                </fieldset>
                                                 <div id="timu-custom-quality" style="margin-top:8px;<?php echo 'custom' !== $cur_preset ? 'display:none;' : ''; ?>">
                                                     <label for="timu-quality"><?php esc_html_e( 'Custom quality (0–100):', 'thisismyurl-heic-support' ); ?></label>
                                                     <input id="timu-quality" type="number" min="0" max="100"
@@ -1274,7 +1281,7 @@ class TIMU_HEIC_Support {
                                                 <td><?php echo esc_html( $saved_sz ); ?></td>
                                                 <td>
                                                     <?php if ( 'missing' === $status ) : ?>
-                                                        <span style="color:#d63638;"><?php esc_html_e( 'File Missing', 'thisismyurl-heic-support' ); ?></span>
+                                                        <strong style="color:#d63638;"><span aria-hidden="true">&#9888; </span><?php esc_html_e( 'File Missing', 'thisismyurl-heic-support' ); ?></strong>
                                                     <?php elseif ( $orig ) : ?>
                                                         <button class="restore-btn button button-small" data-id="<?php echo esc_attr( $post->ID ); ?>">
                                                             <?php esc_html_e( 'Restore', 'thisismyurl-heic-support' ); ?>
@@ -1441,23 +1448,21 @@ TIMU_HEIC_Support::init();
 add_action(
     'plugins_loaded',
     static function () {
-        $updater_path = plugin_dir_path( __FILE__ ) . 'updater.php';
+        $updater_path = plugin_dir_path( __FILE__ ) . 'github-updater.php';
         if ( ! file_exists( $updater_path ) ) {
             return;
         }
 
         require_once $updater_path;
-        if ( ! class_exists( 'FWO_GitHub_Updater' ) ) {
+        if ( ! function_exists( 'timu_boot_github_release_updater' ) ) {
             return;
         }
 
-        new FWO_GitHub_Updater(
+        timu_boot_github_release_updater(
             array(
-                'slug'               => 'thisismyurl-heic-support',
-                'proper_folder_name' => 'thisismyurl-heic-support',
-                'api_url'            => 'https://api.github.com/repos/thisismyurl/thisismyurl-heic-support/releases/latest',
-                'github_url'         => 'https://github.com/thisismyurl/thisismyurl-heic-support',
-                'plugin_file'        => __FILE__,
+                'plugin_file' => __FILE__,
+                'slug'        => 'thisismyurl-heic-support',
+                'repo'        => 'thisismyurl/thisismyurl-heic-support',
             )
         );
     }
