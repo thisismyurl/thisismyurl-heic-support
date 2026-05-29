@@ -19,6 +19,8 @@ A free, non-destructive HEIC/HEIF to WebP converter for WordPress: auto-convert 
 
 HEIC Support by thisismyurl.com converts HEIC/HEIF images — the format modern iPhones and iPads capture — into WebP, which every browser can display. Conversion uses Imagick with libheif on the server; no external services and no phone-home. Each original is moved to a backup directory under `uploads/heic-backups/` and can be restored at any time, individually or in bulk.
 
+**On activation, automatic conversion of new HEIC/HEIF uploads to WebP is turned on by default** (on a host with Imagick + libheif). This is reversible: switch it off under Tools > HEIC Support > Settings, and existing files are untouched until you choose to convert them.
+
 What this plugin actually ships:
 
 * Tools > HEIC Support page with a conversion dashboard, settings, a Pending table, and a Managed Media table.
@@ -59,7 +61,7 @@ Notes:
 == Installation ==
 
 1. Upload the plugin folder to `/wp-content/plugins/`.
-2. Activate the plugin through the Plugins screen.
+2. Activate the plugin through the Plugins screen. Note: activation turns on automatic HEIC/HEIF-to-WebP conversion of new uploads by default — switch it off under Tools > HEIC Support > Settings if you prefer to convert manually.
 3. Go to Tools > HEIC Support.
 4. Configure and run conversion.
 
@@ -85,6 +87,9 @@ Yes. `wp heic convert <id|--all>`, `wp heic restore <id|--all>`, `wp heic status
 * French (Canada) — Christopher Ross
 
 == Changelog ==
+
+= 0.6150 =
+* Disclosure: the readme Description and Installation now state plainly that activation turns on automatic HEIC/HEIF-to-WebP conversion of new uploads by default (on a libheif-capable host), and that it is reversible from Tools > HEIC Support > Settings. No behaviour change.
 
 = 0.6149 =
 * Security: replaced the bundled GitHub updater with the hardened release updater shared with WebP Support — the `after_install` relocation now only fires for this plugin's own update, and the GitHub API request carries a timeout, a User-Agent header, a 200-response check, and a 6-hour cache.
