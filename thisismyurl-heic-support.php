@@ -3,7 +3,7 @@
  * Plugin Name:       HEIC Support by thisismyurl.com
  * Plugin URI:        https://thisismyurl.com/thisismyurl-heic-support/
  * Description:       Non-destructive HEIC/HEIF to WebP conversion with backups, bulk processing, auto-convert on upload, and one-click restoration.
- * Version:           0.6147
+ * Version:           0.6148.2110
  * Requires at least: 6.0
  * Requires PHP:      8.1
  * Author:            Christopher Ross
