@@ -9,6 +9,7 @@ jQuery( function ( $ ) {
     var nonce      = config.nonce    || '';
     var ajaxUrl    = config.ajaxUrl  || window.ajaxurl;
     var batchSize  = Math.max( 1, parseInt( config.batchSize, 10 ) || 10 );
+    var perPage    = Math.max( 5, parseInt( config.perPage,    10 ) || 25 );
 
     var completed        = 0;
     var isCancelled      = false;
@@ -75,6 +76,128 @@ jQuery( function ( $ ) {
         } );
     }
 
+    /* ── Table: search + pagination ─────────────────────────── */
+
+    /**
+     * Attach a search bar and pagination controls to a widefat table.
+     *
+     * @param  {string} tableId   HTML id of the <table> element.
+     * @param  {number} pp        Rows per page.
+     * @return {{ refresh: Function }|null}
+     */
+    function initTable( tableId, pp ) {
+        var $table = $( '#' + tableId );
+        if ( ! $table.length ) { return null; }
+
+        var $tbody  = $table.find( 'tbody' );
+        var $wrap   = $table.closest( '.inside' );
+        var colSpan = $table.find( 'thead th' ).length || 4;
+        var page    = 1;
+        var query   = '';
+
+        /* Search bar */
+        var $bar    = $( '<div>', { style: 'display:flex;gap:8px;align-items:center;margin-bottom:10px;' } );
+        var $search = $( '<input>', {
+            type:        'search',
+            placeholder: 'Search by filename…',
+            'class':     'regular-text',
+            style:       'max-width:260px;'
+        } );
+        var $count  = $( '<span>', { 'class': 'description', style: 'white-space:nowrap;' } );
+        $bar.append( $search ).append( $count );
+        $wrap.prepend( $bar );
+
+        /* Pagination */
+        var $pager = $( '<div>', { 'class': 'timu-pager', style: 'margin-top:10px;display:flex;gap:4px;align-items:center;flex-wrap:wrap;' } );
+        $wrap.append( $pager );
+
+        function render() {
+            var $rows = $tbody.find( 'tr:not(.no-images):not(.timu-nores)' );
+
+            /* Filter by search query */
+            $rows.each( function () {
+                $( this ).toggle( ! query || $( this ).text().toLowerCase().indexOf( query ) !== -1 );
+            } );
+
+            var $vis   = $rows.filter( ':visible' );
+            var total  = $vis.length;
+            var pages  = Math.max( 1, Math.ceil( total / pp ) );
+            page       = Math.min( page, pages );
+
+            /* Show only the current page slice */
+            var start = ( page - 1 ) * pp;
+            var end   = start + pp;
+            $vis.each( function ( i ) {
+                $( this ).toggle( i >= start && i < end );
+            } );
+
+            /* Empty-state placeholder */
+            $tbody.find( '.timu-nores' ).remove();
+            if ( total === 0 && ! $tbody.find( 'tr.no-images' ).is( ':visible' ) ) {
+                $tbody.append(
+                    '<tr class="timu-nores"><td colspan="' + colSpan + '" style="text-align:center;padding:12px 0;color:#646970;">' +
+                    ( query ? 'No results match your search.' : 'Nothing here yet.' ) +
+                    '</td></tr>'
+                );
+            }
+
+            /* Result count label */
+            $count.text( query ? total + ' result' + ( 1 !== total ? 's' : '' ) : '' );
+
+            /* Pagination controls */
+            $pager.empty();
+            if ( pages <= 1 ) { return; }
+
+            /* Prev */
+            var $prev = $( '<button>', { type: 'button', text: '‹', 'class': 'button', style: 'min-width:32px;' } );
+            $prev.prop( 'disabled', 1 === page );
+            $prev.on( 'click', function () { if ( page > 1 ) { page--; render(); } } );
+            $pager.append( $prev );
+
+            /* Page number buttons with ellipsis */
+            var last = 0;
+            for ( var p = 1; p <= pages; p++ ) {
+                if ( p === 1 || p === pages || ( p >= page - 2 && p <= page + 2 ) ) {
+                    if ( last && p - last > 1 ) {
+                        $pager.append( $( '<span>', { text: '…', style: 'padding:0 4px;line-height:28px;' } ) );
+                    }
+                    /* Wrap loop var in IIFE to capture correct value */
+                    ( function ( pg ) {
+                        var $btn = $( '<button>', {
+                            type:    'button',
+                            text:    pg,
+                            'class': 'button' + ( pg === page ? ' button-primary' : '' ),
+                            style:   'min-width:32px;'
+                        } );
+                        $btn.on( 'click', function () { page = pg; render(); } );
+                        $pager.append( $btn );
+                    }( p ) );
+                    last = p;
+                }
+            }
+
+            /* Next */
+            var $next = $( '<button>', { type: 'button', text: '›', 'class': 'button', style: 'min-width:32px;' } );
+            $next.prop( 'disabled', page === pages );
+            $next.on( 'click', function () { if ( page < pages ) { page++; render(); } } );
+            $pager.append( $next );
+
+            $pager.append( $( '<span>', {
+                text:  'Page ' + page + ' of ' + pages + ' — ' + total + ' items',
+                style: 'margin-left:8px;color:#646970;font-size:12px;'
+            } ) );
+        }
+
+        $search.on( 'input', function () {
+            query = $( this ).val().toLowerCase().trim();
+            page  = 1;
+            render();
+        } );
+
+        render();
+        return { refresh: render };
+    }
+
     /* ── Restore buttons ─────────────────────────────────────── */
 
     $( document ).on( 'click', '.restore-btn', function () {
@@ -96,6 +219,9 @@ jQuery( function ( $ ) {
     } );
 
     /* ── Batch convert ──────────────────────────────────────── */
+
+    var pendingTable = initTable( 'fwo-pending-table', perPage );
+    initTable( 'fwo-media-table', perPage );
 
     $( '#btn-start' ).on( 'click', function () {
         var $btn  = $( this );
@@ -167,6 +293,7 @@ jQuery( function ( $ ) {
 
                     displayCompleted = completed;
                     updateProgress( total );
+                    if ( pendingTable ) { pendingTable.refresh(); }
 
                     if ( ! pendingIds.length ) {
                         stopBusyIndicator();

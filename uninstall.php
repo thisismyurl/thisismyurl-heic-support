@@ -25,5 +25,16 @@ if ( ! empty( $options['delete_backups_uninstall'] ) && $wp_filesystem && $wp_fi
 
 delete_metadata( 'post', 0, '_heic_original_path', '', true );
 delete_metadata( 'post', 0, '_heic_savings', '', true );
+delete_metadata( 'post', 0, '_heic_converted_at', '', true );
 delete_option( 'timu_heic_support_options' );
+delete_option( 'timu_heic_environment_status' );
+
+while ( false !== wp_next_scheduled( 'timu_heic_auto_optimize_event' ) ) {
+    $timestamp = wp_next_scheduled( 'timu_heic_auto_optimize_event' );
+    if ( false === $timestamp ) {
+        break;
+    }
+    wp_unschedule_event( (int) $timestamp, 'timu_heic_auto_optimize_event' );
+}
+
 wp_cache_flush();

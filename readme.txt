@@ -7,7 +7,7 @@ Tags: heic, heif, webp, ios images, optimization
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 0.6149.0734
+Stable tag: 0.6165.0822
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 GitHub Plugin URI: https://github.com/thisismyurl/thisismyurl-heic-support/
@@ -87,6 +87,11 @@ Yes. `wp heic convert <id|--all>`, `wp heic restore <id|--all>`, `wp heic status
 * French (Canada) — Christopher Ross
 
 == Changelog ==
+
+= 0.6165.0822 =
+* Aligned the Tools > HEIC Support admin to the shared image-plugin family shell (Optimize / Settings / Report tabs, search and pagination, ROI report) so HEIC, BMP, SVG, and WebP Support share one consistent admin.
+* Added a shared Vault/Shadow backup adapter: when either shared backup engine is active, a safety snapshot is taken before each conversion or restore. The plugin's own per-file backup runs regardless.
+* No conversion-engine change — HEIC/HEIF to WebP, EXIF/orientation/ICC handling, capability detection, and restore are all unchanged.
 
 = 0.6150 =
 * Disclosure: the readme Description and Installation now state plainly that activation turns on automatic HEIC/HEIF-to-WebP conversion of new uploads by default (on a libheif-capable host), and that it is reversible from Tools > HEIC Support > Settings. No behaviour change.

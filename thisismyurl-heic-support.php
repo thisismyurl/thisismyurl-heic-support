@@ -3,7 +3,7 @@
  * Plugin Name:       HEIC Support by thisismyurl.com
  * Plugin URI:        https://thisismyurl.com/thisismyurl-heic-support/
  * Description:       Non-destructive HEIC/HEIF to WebP conversion with backups, bulk processing, auto-convert on upload, and one-click restoration.
- * Version:           0.6149.0734
+ * Version:           0.6165.0822
  * Requires at least: 6.0
  * Requires PHP:      8.1
  * Author:            Christopher Ross
@@ -27,6 +27,11 @@ if ( ! defined( 'TIMU_HEIC_SUPPORT_DIR' ) ) {
 if ( ! defined( 'TIMU_HEIC_SUPPORT_BASENAME' ) ) {
     define( 'TIMU_HEIC_SUPPORT_BASENAME', plugin_basename( __FILE__ ) );
 }
+if ( ! defined( 'TIMU_HEIC_VERSION' ) ) {
+    define( 'TIMU_HEIC_VERSION', '0.6165.0822' );
+}
+
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-backup-adapter.php';
 
 /**
  * HEIC/HEIF to WebP conversion with non-destructive backups.
@@ -41,8 +46,13 @@ class TIMU_HEIC_Support {
     const AJAX_NONCE_ACTION = 'timu_heic_nonce';
     const BACKUP_META_KEY   = '_heic_original_path';
     const SAVINGS_META_KEY  = '_heic_savings';
+    const CONVERTED_AT_KEY  = '_heic_converted_at';
     const OPTION_KEY        = 'timu_heic_support_options';
     const SETTINGS_GROUP    = 'timu_heic_support_settings';
+    const CRON_HOOK         = 'timu_heic_auto_optimize_event';
+    const ENV_OPTION_KEY    = 'timu_heic_environment_status';
+    const ADMIN_TICK_LOCK   = 'timu_heic_admin_tick_lock';
+    const BATCH_BACKUP_LOCK = 'timu_heic_batch_backup_lock';
     const LOCK_PREFIX       = 'timu_heic_lock_';
     const LOCK_TTL_SECONDS  = 300;
     const BACKUP_SUBDIR     = 'heic-backups';
@@ -64,8 +74,14 @@ class TIMU_HEIC_Support {
         add_action( 'admin_menu', array( __CLASS__, 'add_admin_menu' ) );
         add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
+        add_action( 'admin_notices', array( __CLASS__, 'maybe_show_environment_notice' ) );
+        add_action( 'init', array( __CLASS__, 'sync_auto_optimize_schedule' ), 25 );
+        add_action( 'admin_init', array( __CLASS__, 'maybe_auto_optimize_on_admin_access' ), 40 );
+        add_action( self::CRON_HOOK, array( __CLASS__, 'run_auto_optimize_cron' ) );
+        add_filter( 'cron_schedules', array( __CLASS__, 'register_cron_schedules' ) );
         add_filter( 'upload_mimes', array( __CLASS__, 'allow_heic_uploads' ) );
         add_filter( 'wp_handle_upload', array( __CLASS__, 'handle_heic_upload' ) );
+        add_action( 'wp_ajax_timu_heic_optimize', array( __CLASS__, 'ajax_bulk_optimize' ) );
         add_action( 'wp_ajax_timu_heic_process_batch', array( __CLASS__, 'ajax_process_batch' ) );
         add_action( 'wp_ajax_timu_heic_restore_single', array( __CLASS__, 'ajax_restore_single' ) );
         add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( __CLASS__, 'add_plugin_action_links' ) );
@@ -137,7 +153,7 @@ class TIMU_HEIC_Support {
             'timu-heic-support-admin',
             plugin_dir_url( __FILE__ ) . 'assets/js/admin.js',
             array( 'jquery' ),
-            '0.6147',
+            TIMU_HEIC_VERSION,
             true
         );
     }
@@ -158,16 +174,19 @@ class TIMU_HEIC_Support {
     }
 
     /**
-     * Add Settings and Sponsor links to plugin row actions.
+     * Add Settings and Donate links to plugin row actions.
      *
      * @param array $links Existing plugin row links.
      *
      * @return array
      */
     public static function add_plugin_action_links( $links ) {
+        $settings_url = admin_url( 'tools.php?page=heic-optimizer&tab=settings' );
+        $donate_url   = self::get_thisismyurl_link( 'https://thisismyurl.com/donate/', 'plugin_row_donate' );
+
         $custom_links = array(
-            '<a href="' . esc_url( admin_url( 'tools.php?page=heic-optimizer' ) ) . '">' . esc_html__( 'Settings', 'thisismyurl-heic-support' ) . '</a>',
-            '<a href="' . esc_url( 'https://github.com/sponsors/thisismyurl' ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Sponsor', 'thisismyurl-heic-support' ) . '</a>',
+            '<a href="' . esc_url( $settings_url ) . '">' . esc_html__( 'Settings', 'thisismyurl-heic-support' ) . '</a>',
+            '<a href="' . esc_url( $donate_url ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Donate', 'thisismyurl-heic-support' ) . '</a>',
         );
 
         return array_merge( $custom_links, $links );
@@ -180,11 +199,20 @@ class TIMU_HEIC_Support {
      */
     private static function get_default_options() {
         return array(
-            'quality'                  => 82,
-            'quality_preset'           => 'web',
-            'batch_size'               => 10,
-            'auto_convert_uploads'     => 1,
-            'delete_backups_uninstall' => 1,
+            'quality'                   => 82,
+            'quality_preset'            => 'web',
+            'batch_size'                => 10,
+            'auto_optimize_batch'       => 3,
+            'auto_convert_uploads'      => 1,
+            'auto_optimize_enabled'     => 0,
+            'auto_optimize_admin'       => 1,
+            'auto_optimize_cron'        => 1,
+            'auto_optimize_interval'    => 'hourly',
+            'list_per_page'             => 25,
+            'delete_backups_uninstall'  => 1,
+            'report_bandwidth_cost_gb'  => 0.08,
+            'report_monthly_image_hits' => 50000,
+            'track_outbound_utms'       => 1,
         );
     }
 
@@ -225,12 +253,338 @@ class TIMU_HEIC_Support {
         $batch_size = isset( $input['batch_size'] ) ? absint( $input['batch_size'] ) : $defaults['batch_size'];
         $batch_size = min( 100, max( 1, $batch_size ) );
 
+        $auto_batch = isset( $input['auto_optimize_batch'] ) ? absint( $input['auto_optimize_batch'] ) : $defaults['auto_optimize_batch'];
+        $auto_batch = min( 25, max( 1, $auto_batch ) );
+
+        $allowed_intervals = array( 'fifteen_minutes', 'hourly', 'twicedaily', 'daily' );
+        $interval          = isset( $input['auto_optimize_interval'] ) ? sanitize_key( (string) $input['auto_optimize_interval'] ) : 'hourly';
+        if ( ! in_array( $interval, $allowed_intervals, true ) ) {
+            $interval = 'hourly';
+        }
+
+        $report_cost_gb = isset( $input['report_bandwidth_cost_gb'] ) ? (float) $input['report_bandwidth_cost_gb'] : (float) $defaults['report_bandwidth_cost_gb'];
+        $report_cost_gb = min( 10, max( 0, $report_cost_gb ) );
+
+        $report_hits = isset( $input['report_monthly_image_hits'] ) ? absint( $input['report_monthly_image_hits'] ) : (int) $defaults['report_monthly_image_hits'];
+        $report_hits = min( 100000000, max( 0, $report_hits ) );
+
         return array(
-            'quality'                  => $quality,
-            'quality_preset'           => $quality_preset,
-            'batch_size'               => $batch_size,
-            'auto_convert_uploads'     => isset( $input['auto_convert_uploads'] ) ? 1 : 0,
-            'delete_backups_uninstall' => isset( $input['delete_backups_uninstall'] ) ? 1 : 0,
+            'quality'                   => $quality,
+            'quality_preset'            => $quality_preset,
+            'batch_size'                => $batch_size,
+            'auto_optimize_batch'       => $auto_batch,
+            'auto_convert_uploads'      => isset( $input['auto_convert_uploads'] ) ? 1 : 0,
+            'auto_optimize_enabled'     => isset( $input['auto_optimize_enabled'] ) ? 1 : 0,
+            'auto_optimize_admin'       => isset( $input['auto_optimize_admin'] ) ? 1 : 0,
+            'auto_optimize_cron'        => isset( $input['auto_optimize_cron'] ) ? 1 : 0,
+            'auto_optimize_interval'    => $interval,
+            'list_per_page'             => min( 500, max( 5, isset( $input['list_per_page'] ) ? absint( $input['list_per_page'] ) : 25 ) ),
+            'delete_backups_uninstall'  => isset( $input['delete_backups_uninstall'] ) ? 1 : 0,
+            'report_bandwidth_cost_gb'  => $report_cost_gb,
+            'report_monthly_image_hits' => $report_hits,
+            'track_outbound_utms'       => isset( $input['track_outbound_utms'] ) ? 1 : 0,
+        );
+    }
+
+    /**
+     * Activation callback. Records environment capability details for admins.
+     *
+     * @return void
+     */
+    public static function activate_plugin() {
+        $status = array(
+            'checked_at'  => time(),
+            'has_imagick' => extension_loaded( 'imagick' ) && class_exists( 'Imagick' ),
+            'has_heic'    => self::imagick_supports_heic(),
+            'php'         => PHP_VERSION,
+            'wp_version'  => get_bloginfo( 'version' ),
+        );
+
+        update_option( self::ENV_OPTION_KEY, $status, false );
+        set_transient( 'timu_heic_activation_status', $status, MINUTE_IN_SECONDS * 5 );
+    }
+
+    /**
+     * Deactivation callback. Clears scheduled events and locks.
+     *
+     * @return void
+     */
+    public static function deactivate_plugin() {
+        while ( false !== wp_next_scheduled( self::CRON_HOOK ) ) {
+            $timestamp = wp_next_scheduled( self::CRON_HOOK );
+            if ( false === $timestamp ) {
+                break;
+            }
+            wp_unschedule_event( (int) $timestamp, self::CRON_HOOK );
+        }
+        delete_transient( self::ADMIN_TICK_LOCK );
+    }
+
+    /**
+     * Register custom schedules used by background auto optimization.
+     *
+     * @param array $schedules Existing schedules.
+     *
+     * @return array
+     */
+    public static function register_cron_schedules( $schedules ) {
+        if ( ! isset( $schedules['fifteen_minutes'] ) ) {
+            $schedules['fifteen_minutes'] = array(
+                'interval' => 15 * MINUTE_IN_SECONDS,
+                'display'  => __( 'Every 15 Minutes', 'thisismyurl-heic-support' ),
+            );
+        }
+
+        return $schedules;
+    }
+
+    /**
+     * Show environment notice after activation or when HEIC cannot be decoded.
+     *
+     * @return void
+     */
+    public static function maybe_show_environment_notice() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        $status = get_transient( 'timu_heic_activation_status' );
+        if ( false !== $status ) {
+            delete_transient( 'timu_heic_activation_status' );
+        } else {
+            $status = get_option( self::ENV_OPTION_KEY, array() );
+        }
+
+        if ( empty( $status ) || ! is_array( $status ) ) {
+            return;
+        }
+
+        if ( empty( $status['has_heic'] ) ) {
+            echo '<div class="notice notice-error"><p>';
+            echo esc_html__( 'HEIC Support requires Imagick compiled with libheif. HEIC/HEIF decoding was not detected, so conversions cannot run until it is enabled.', 'thisismyurl-heic-support' );
+            echo '</p></div>';
+        }
+    }
+
+    /**
+     * Build a thisismyurl link with optional static, privacy-safe UTM tags.
+     *
+     * @param string $url      Destination URL.
+     * @param string $campaign Campaign identifier.
+     *
+     * @return string
+     */
+    private static function get_thisismyurl_link( $url, $campaign ) {
+        $options = self::get_options();
+        if ( empty( $options['track_outbound_utms'] ) ) {
+            return $url;
+        }
+
+        return add_query_arg(
+            array(
+                'utm_source'   => 'wp_plugin',
+                'utm_medium'   => 'heic_support',
+                'utm_campaign' => sanitize_key( $campaign ),
+            ),
+            $url
+        );
+    }
+
+    /**
+     * Keep auto-optimization cron scheduling aligned with plugin settings.
+     *
+     * @return void
+     */
+    public static function sync_auto_optimize_schedule() {
+        $options         = self::get_options();
+        $should_schedule = ! empty( $options['auto_optimize_enabled'] ) && ! empty( $options['auto_optimize_cron'] );
+
+        if ( ! $should_schedule ) {
+            while ( false !== wp_next_scheduled( self::CRON_HOOK ) ) {
+                $timestamp = wp_next_scheduled( self::CRON_HOOK );
+                if ( false === $timestamp ) {
+                    break;
+                }
+                wp_unschedule_event( (int) $timestamp, self::CRON_HOOK );
+            }
+            return;
+        }
+
+        $interval = isset( $options['auto_optimize_interval'] ) ? $options['auto_optimize_interval'] : 'hourly';
+        $event    = wp_get_scheduled_event( self::CRON_HOOK );
+
+        if ( $event && isset( $event->schedule ) && $event->schedule !== $interval ) {
+            wp_unschedule_event( (int) $event->timestamp, self::CRON_HOOK );
+            $event = false;
+        }
+
+        if ( ! $event ) {
+            wp_schedule_event( time() + MINUTE_IN_SECONDS, $interval, self::CRON_HOOK );
+        }
+    }
+
+    /**
+     * Process a small optimization batch when admin pages are accessed.
+     *
+     * @return void
+     */
+    public static function maybe_auto_optimize_on_admin_access() {
+        if ( ! is_admin() || wp_doing_ajax() || wp_doing_cron() ) {
+            return;
+        }
+
+        $options = self::get_options();
+        if ( empty( $options['auto_optimize_enabled'] ) || empty( $options['auto_optimize_admin'] ) ) {
+            return;
+        }
+
+        if ( get_transient( self::ADMIN_TICK_LOCK ) ) {
+            return;
+        }
+
+        set_transient( self::ADMIN_TICK_LOCK, 1, MINUTE_IN_SECONDS * 5 );
+        self::run_auto_optimize_batch( 'admin' );
+    }
+
+    /**
+     * Cron callback for background auto optimization.
+     *
+     * @return void
+     */
+    public static function run_auto_optimize_cron() {
+        self::run_auto_optimize_batch( 'cron' );
+    }
+
+    /**
+     * Execute one small auto optimization batch.
+     *
+     * @param string $context Trigger context.
+     *
+     * @return void
+     */
+    private static function run_auto_optimize_batch( $context ) {
+        if ( ! self::imagick_supports_heic() ) {
+            return;
+        }
+
+        $options = self::get_options();
+        $limit   = isset( $options['auto_optimize_batch'] ) ? (int) $options['auto_optimize_batch'] : 3;
+        $limit   = min( 25, max( 1, $limit ) );
+
+        $query = new WP_Query(
+            array(
+                'post_type'              => 'attachment',
+                'post_status'            => 'inherit',
+                'posts_per_page'         => $limit,
+                'fields'                 => 'ids',
+                'no_found_rows'          => true,
+                'update_post_meta_cache' => false,
+                'update_post_term_cache' => false,
+                'orderby'                => 'ID',
+                'order'                  => 'ASC',
+                'post_mime_type'         => self::SOURCE_MIMES,
+                'meta_query'             => array(
+                    array(
+                        'key'     => self::BACKUP_META_KEY,
+                        'compare' => 'NOT EXISTS',
+                    ),
+                ),
+            )
+        );
+
+        if ( empty( $query->posts ) ) {
+            return;
+        }
+
+        TIMU_HEIC_Backup_Adapter::snapshot( 'HEIC auto optimize', array() );
+
+        foreach ( $query->posts as $attachment_id ) {
+            self::convert_image( (int) $attachment_id, self::get_quality_setting() );
+        }
+    }
+
+    /**
+     * Build reporting metrics for a selected date window.
+     *
+     * @param string $range_key Date range key.
+     *
+     * @return array
+     */
+    private static function get_report_metrics( $range_key ) {
+        $now   = time();
+        $start = 0;
+
+        switch ( $range_key ) {
+            case '30d':
+                $start = $now - ( 30 * DAY_IN_SECONDS );
+                break;
+            case '90d':
+                $start = $now - ( 90 * DAY_IN_SECONDS );
+                break;
+            case '365d':
+                $start = $now - ( 365 * DAY_IN_SECONDS );
+                break;
+            case 'all':
+            default:
+                $start = 0;
+                break;
+        }
+
+        $query = new WP_Query(
+            array(
+                'post_type'              => 'attachment',
+                'post_status'            => 'inherit',
+                'posts_per_page'         => -1,
+                'fields'                 => 'ids',
+                'no_found_rows'          => true,
+                'update_post_term_cache' => false,
+                'post_mime_type'         => 'image/webp',
+                'meta_query'             => array(
+                    array(
+                        'key'     => self::BACKUP_META_KEY,
+                        'compare' => 'EXISTS',
+                    ),
+                ),
+            )
+        );
+
+        $converted_count = 0;
+        $bytes_saved     = 0;
+
+        if ( ! empty( $query->posts ) ) {
+            foreach ( $query->posts as $attachment_id ) {
+                $backup_ref = get_post_meta( $attachment_id, self::BACKUP_META_KEY, true );
+                if ( ! $backup_ref ) {
+                    continue;
+                }
+
+                $converted_at = (int) get_post_meta( $attachment_id, self::CONVERTED_AT_KEY, true );
+                if ( $start > 0 && ( $converted_at <= 0 || $converted_at < $start ) ) {
+                    continue;
+                }
+
+                ++$converted_count;
+                $bytes_saved += (int) get_post_meta( $attachment_id, self::SAVINGS_META_KEY, true );
+            }
+        }
+
+        $options         = self::get_options();
+        $monthly_hits    = isset( $options['report_monthly_image_hits'] ) ? (int) $options['report_monthly_image_hits'] : 0;
+        $cost_per_gb     = isset( $options['report_bandwidth_cost_gb'] ) ? (float) $options['report_bandwidth_cost_gb'] : 0.0;
+        $avg_saved_bytes = $converted_count > 0 ? ( $bytes_saved / $converted_count ) : 0;
+        $gb_per_month    = ( $avg_saved_bytes * $monthly_hits ) / ( 1024 * 1024 * 1024 );
+        $monthly_roi     = $gb_per_month * $cost_per_gb;
+
+        return array(
+            'range'           => $range_key,
+            'converted_count' => $converted_count,
+            'bytes_saved'     => $bytes_saved,
+            'gb_saved'        => $bytes_saved / ( 1024 * 1024 * 1024 ),
+            'avg_saved_kb'    => $avg_saved_bytes / 1024,
+            'monthly_hits'    => $monthly_hits,
+            'cost_per_gb'     => $cost_per_gb,
+            'monthly_roi'     => $monthly_roi,
+            'annual_roi'      => $monthly_roi * 12,
         );
     }
 
@@ -516,6 +870,9 @@ class TIMU_HEIC_Support {
             return $upload;
         }
 
+        // Extra Vault/Shadow safety snapshot of the original before it moves.
+        TIMU_HEIC_Backup_Adapter::snapshot( 'HEIC upload convert', array( $source_path ) );
+
         $backup_path = $backup_dir . wp_unique_filename( $backup_dir, wp_basename( $source_path ) );
         if ( ! $fs->move( $source_path, $backup_path, true ) ) {
             return $upload;
@@ -561,8 +918,9 @@ class TIMU_HEIC_Support {
         set_transient(
             'timu_heic_pending_' . md5( $webp_path ),
             array(
-                'backup'  => self::relativize_backup_path( $backup_path ),
-                'savings' => (int) $savings,
+                'backup'    => self::relativize_backup_path( $backup_path ),
+                'savings'   => (int) $savings,
+                'converted' => time(),
             ),
             self::LOCK_TTL_SECONDS
         );
@@ -593,6 +951,7 @@ class TIMU_HEIC_Support {
 
         update_post_meta( $attachment_id, self::BACKUP_META_KEY, $stashed['backup'] );
         update_post_meta( $attachment_id, self::SAVINGS_META_KEY, (int) $stashed['savings'] );
+        update_post_meta( $attachment_id, self::CONVERTED_AT_KEY, isset( $stashed['converted'] ) ? (int) $stashed['converted'] : time() );
         delete_transient( $key );
     }
 
@@ -664,6 +1023,9 @@ class TIMU_HEIC_Support {
         $rel_path      = get_post_meta( $attachment_id, '_wp_attached_file', true );
         $new_rel_path  = self::swap_extension( $rel_path, 'webp' );
 
+        // Extra Vault/Shadow safety snapshot before touching the source file.
+        TIMU_HEIC_Backup_Adapter::snapshot( 'HEIC optimize #' . $attachment_id, array( $full_path ) );
+
         // Archive the original first, then encode from the archived copy so the
         // source pixels survive even if the WebP write fails mid-stream.
         $backup_dir = self::get_backup_dir( $attachment_id );
@@ -692,6 +1054,7 @@ class TIMU_HEIC_Support {
 
         update_post_meta( $attachment_id, self::BACKUP_META_KEY, self::relativize_backup_path( $backup_path ) );
         update_post_meta( $attachment_id, self::SAVINGS_META_KEY, max( 0, $original_size - (int) filesize( $new_path ) ) );
+        update_post_meta( $attachment_id, self::CONVERTED_AT_KEY, time() );
         update_post_meta( $attachment_id, '_wp_attached_file', $new_rel_path );
 
         wp_update_post(
@@ -768,6 +1131,9 @@ class TIMU_HEIC_Support {
             return false;
         }
 
+        // Snapshot the current converted file before restore removes it.
+        TIMU_HEIC_Backup_Adapter::snapshot( 'HEIC restore #' . $attachment_id, array( $current_webp ) );
+
         $extension     = strtolower( pathinfo( $backup_path, PATHINFO_EXTENSION ) );
         $restored_path = self::swap_extension( $current_webp, $extension );
 
@@ -796,6 +1162,7 @@ class TIMU_HEIC_Support {
 
         delete_post_meta( $attachment_id, self::BACKUP_META_KEY );
         delete_post_meta( $attachment_id, self::SAVINGS_META_KEY );
+        delete_post_meta( $attachment_id, self::CONVERTED_AT_KEY );
 
         return true;
     }
@@ -953,6 +1320,14 @@ class TIMU_HEIC_Support {
         $failed_ids    = array();
         $errors        = array();
 
+        // Take one Vault/Shadow safety snapshot per short run window. Re-running
+        // full backups for every AJAX chunk can cause long delays/timeouts.
+        $backup_lock_key = self::BATCH_BACKUP_LOCK . '_' . get_current_user_id();
+        if ( ! get_transient( $backup_lock_key ) ) {
+            TIMU_HEIC_Backup_Adapter::snapshot( 'HEIC batch conversion', array() );
+            set_transient( $backup_lock_key, 1, 15 * MINUTE_IN_SECONDS );
+        }
+
         foreach ( $ids as $attachment_id ) {
             $result = self::convert_image( $attachment_id, self::get_quality_setting() );
             if ( true === $result ) {
@@ -970,6 +1345,37 @@ class TIMU_HEIC_Support {
                 'errors'        => array_values( array_unique( $errors ) ),
             )
         );
+    }
+
+    /**
+     * AJAX callback: convert one HEIC/HEIF image.
+     *
+     * @return void
+     */
+    public static function ajax_bulk_optimize() {
+        check_ajax_referer( self::AJAX_NONCE_ACTION, 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( __( 'Unauthorized request.', 'thisismyurl-heic-support' ) );
+        }
+
+        $attachment_id = isset( $_POST['attachment_id'] ) ? absint( wp_unslash( $_POST['attachment_id'] ) ) : 0;
+        if ( ! $attachment_id ) {
+            wp_send_json_error( __( 'Invalid attachment ID.', 'thisismyurl-heic-support' ) );
+        }
+
+        $result = self::convert_image( $attachment_id, self::get_quality_setting() );
+
+        if ( true === $result ) {
+            wp_send_json_success(
+                array(
+                    'filename' => basename( (string) get_attached_file( $attachment_id ) ),
+                    'thumb'    => wp_get_attachment_image( $attachment_id, array( 50, 50 ) ),
+                )
+            );
+        }
+
+        wp_send_json_error( is_wp_error( $result ) ? $result->get_error_message() : __( 'Unknown error.', 'thisismyurl-heic-support' ) );
     }
 
     /**
@@ -1004,6 +1410,12 @@ class TIMU_HEIC_Support {
     public static function render_admin_page() {
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_die( esc_html__( 'You do not have permission to access this page.', 'thisismyurl-heic-support' ) );
+        }
+
+        $allowed_tabs = array( 'optimize', 'settings', 'report' );
+        $active_tab   = isset( $_GET['tab'] ) ? sanitize_key( (string) $_GET['tab'] ) : 'optimize'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( ! in_array( $active_tab, $allowed_tabs, true ) ) {
+            $active_tab = 'optimize';
         }
 
         $lists       = self::get_media_lists();
@@ -1049,10 +1461,12 @@ class TIMU_HEIC_Support {
                     'ajaxUrl'    => admin_url( 'admin-ajax.php' ),
                     'nonce'      => wp_create_nonce( self::AJAX_NONCE_ACTION ),
                     'actions'    => array(
+                        'single'  => 'timu_heic_optimize',
                         'batch'   => 'timu_heic_process_batch',
                         'restore' => 'timu_heic_restore_single',
                     ),
                     'batchSize'  => self::get_batch_size_setting(),
+                    'perPage'    => (int) $options['list_per_page'],
                     'pendingIds' => $pending_ids,
                     'strings'    => array(
                         'processing'        => __( 'Processing...', 'thisismyurl-heic-support' ),
@@ -1065,6 +1479,13 @@ class TIMU_HEIC_Support {
             'before'
         );
 
+        $base_url        = admin_url( 'tools.php?page=heic-optimizer' );
+        $optimize_url    = $base_url . '&tab=optimize';
+        $settings_url    = $base_url . '&tab=settings';
+        $report_url      = $base_url . '&tab=report';
+        $thisismyurl_url = self::get_thisismyurl_link( 'https://thisismyurl.com/', 'plugin_header' );
+        $donate_url      = self::get_thisismyurl_link( 'https://thisismyurl.com/donate/', 'plugin_sidebar_donate' );
+
         ?>
         <div class="wrap">
             <h1>
@@ -1073,15 +1494,14 @@ class TIMU_HEIC_Support {
                     <?php
                     echo wp_kses_post(
                         sprintf(
-                            /* translators: %s: linked site name. */
+                            /* translators: %s: link to thisismyurl.com */
                             __( 'by %s', 'thisismyurl-heic-support' ),
-                            '<a href="https://thisismyurl.com/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">thisismyurl.com</a>'
+                            '<a href="' . esc_url( $thisismyurl_url ) . '" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">thisismyurl.com</a>'
                         )
                     );
                     ?>
                 </span>
             </h1>
-            <p><?php esc_html_e( 'Non-destructive HEIC/HEIF to WebP conversion with backups and one-click restoration.', 'thisismyurl-heic-support' ); ?></p>
 
             <?php if ( ! $heic_ok ) : ?>
                 <div class="notice notice-warning">
@@ -1089,13 +1509,31 @@ class TIMU_HEIC_Support {
                 </div>
             <?php endif; ?>
 
+            <nav class="nav-tab-wrapper wp-clearfix">
+                <a href="<?php echo esc_url( $optimize_url ); ?>" class="nav-tab<?php echo 'optimize' === $active_tab ? ' nav-tab-active' : ''; ?>">
+                    <?php esc_html_e( 'Optimize', 'thisismyurl-heic-support' ); ?>
+                    <?php if ( ! empty( $pending_ids ) ) : ?>
+                        <span class="awaiting-mod" style="margin-left:4px;"><?php echo esc_html( count( $pending_ids ) ); ?></span>
+                    <?php endif; ?>
+                </a>
+                <a href="<?php echo esc_url( $settings_url ); ?>" class="nav-tab<?php echo 'settings' === $active_tab ? ' nav-tab-active' : ''; ?>">
+                    <?php esc_html_e( 'Settings', 'thisismyurl-heic-support' ); ?>
+                </a>
+                <a href="<?php echo esc_url( $report_url ); ?>" class="nav-tab<?php echo 'report' === $active_tab ? ' nav-tab-active' : ''; ?>">
+                    <?php esc_html_e( 'Report', 'thisismyurl-heic-support' ); ?>
+                </a>
+            </nav>
+
+            <?php if ( 'optimize' === $active_tab ) : ?>
+
             <div id="poststuff">
                 <div id="post-body" class="metabox-holder columns-2">
                     <div id="post-body-content">
+
                         <div class="postbox">
                             <h2 class="hndle"><span><?php esc_html_e( 'Conversion Dashboard', 'thisismyurl-heic-support' ); ?></span></h2>
                             <div class="inside">
-                                <div class="welcome-panel-content" style="padding:10px 0;min-height:100px;">
+                                <div style="padding:10px 0;min-height:80px;">
                                     <div class="fwo-controls" style="display:flex;gap:10px;align-items:center;">
                                         <button id="btn-start" class="button button-primary button-large" <?php disabled( empty( $pending_ids ) || ! $heic_ok ); ?>>
                                             <?php
@@ -1148,78 +1586,6 @@ class TIMU_HEIC_Support {
                                     </p>
                                     <?php endif; ?>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div class="postbox">
-                            <h2 class="hndle"><span><?php esc_html_e( 'Conversion Settings', 'thisismyurl-heic-support' ); ?></span></h2>
-                            <div class="inside">
-                                <form method="post" action="options.php">
-                                    <?php settings_fields( self::SETTINGS_GROUP ); ?>
-                                    <table class="form-table" role="presentation">
-                                        <tr>
-                                            <th scope="row"><?php esc_html_e( 'Quality Preset', 'thisismyurl-heic-support' ); ?></th>
-                                            <td>
-                                                <fieldset>
-                                                <legend class="screen-reader-text"><?php esc_html_e( 'Quality Preset', 'thisismyurl-heic-support' ); ?></legend>
-                                                <?php
-                                                $quality_presets = array(
-                                                    'web'      => __( 'Web (82) — balanced size/quality', 'thisismyurl-heic-support' ),
-                                                    'print'    => __( 'Print (95) — high fidelity', 'thisismyurl-heic-support' ),
-                                                    'lossless' => __( 'Lossless (100)', 'thisismyurl-heic-support' ),
-                                                    'custom'   => __( 'Custom', 'thisismyurl-heic-support' ),
-                                                );
-                                                $cur_preset = isset( $options['quality_preset'] ) ? $options['quality_preset'] : 'web';
-                                                foreach ( $quality_presets as $val => $label ) :
-                                                    ?>
-                                                    <label style="display:block;margin-bottom:4px;">
-                                                        <input type="radio"
-                                                            name="<?php echo esc_attr( self::OPTION_KEY ); ?>[quality_preset]"
-                                                            value="<?php echo esc_attr( $val ); ?>"
-                                                            <?php checked( $cur_preset, $val ); ?>
-                                                            class="timu-preset-radio" />
-                                                        <?php echo esc_html( $label ); ?>
-                                                    </label>
-                                                <?php endforeach; ?>
-                                                </fieldset>
-                                                <div id="timu-custom-quality" style="margin-top:8px;<?php echo 'custom' !== $cur_preset ? 'display:none;' : ''; ?>">
-                                                    <label for="timu-quality"><?php esc_html_e( 'Custom quality (0–100):', 'thisismyurl-heic-support' ); ?></label>
-                                                    <input id="timu-quality" type="number" min="0" max="100"
-                                                        name="<?php echo esc_attr( self::OPTION_KEY ); ?>[quality]"
-                                                        value="<?php echo esc_attr( $options['quality'] ); ?>"
-                                                        class="small-text" style="margin-left:6px;" />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row"><label for="timu-batch-size"><?php esc_html_e( 'Batch Size', 'thisismyurl-heic-support' ); ?></label></th>
-                                            <td>
-                                                <input id="timu-batch-size" type="number" min="1" max="100" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[batch_size]" value="<?php echo esc_attr( $options['batch_size'] ); ?>" class="small-text" />
-                                                <p class="description"><?php esc_html_e( 'Number of images processed per AJAX request.', 'thisismyurl-heic-support' ); ?></p>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row"><?php esc_html_e( 'Auto-Convert Uploads', 'thisismyurl-heic-support' ); ?></th>
-                                            <td>
-                                                <label>
-                                                    <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[auto_convert_uploads]" value="1" <?php checked( ! empty( $options['auto_convert_uploads'] ) ); ?> />
-                                                    <?php esc_html_e( 'Convert new HEIC/HEIF uploads to WebP automatically.', 'thisismyurl-heic-support' ); ?>
-                                                </label>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row"><?php esc_html_e( 'Uninstall Behavior', 'thisismyurl-heic-support' ); ?></th>
-                                            <td>
-                                                <label>
-                                                    <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[delete_backups_uninstall]" value="1" <?php checked( ! empty( $options['delete_backups_uninstall'] ) ); ?> />
-                                                    <?php esc_html_e( 'Delete backup files when plugin is uninstalled.', 'thisismyurl-heic-support' ); ?>
-                                                </label>
-                                            </td>
-                                        </tr>
-                                    </table>
-
-                                    <?php submit_button( __( 'Save Settings', 'thisismyurl-heic-support' ) ); ?>
-                                </form>
                             </div>
                         </div>
 
@@ -1297,39 +1663,263 @@ class TIMU_HEIC_Support {
                             </div>
                         </div>
 
-                    </div>
+                    </div><!-- #post-body-content -->
 
                     <div id="postbox-container-1" class="postbox-container">
                         <div class="postbox">
-                            <h2 class="hndle"><span><?php esc_html_e( 'Documentation', 'thisismyurl-heic-support' ); ?></span></h2>
+                            <h2 class="hndle"><span><?php esc_html_e( 'About', 'thisismyurl-heic-support' ); ?></span></h2>
                             <div class="inside">
-                                <p><?php esc_html_e( 'This plugin converts HEIC/HEIF images from Apple devices to WebP using Imagick. New uploads can be converted automatically, and existing library images can be converted in bulk. Originals are moved to a backup directory and can be restored at any time.', 'thisismyurl-heic-support' ); ?></p>
-                                <hr />
+                                <p><?php esc_html_e( 'Converts HEIC/HEIF images from Apple devices to WebP using Imagick. New uploads can be converted automatically, and existing library images can be converted in bulk. Originals are backed up and can be restored any time.', 'thisismyurl-heic-support' ); ?></p>
                                 <?php if ( ! empty( $restorable ) ) : ?>
+                                    <hr />
                                     <p><strong><?php esc_html_e( 'Bulk Actions', 'thisismyurl-heic-support' ); ?></strong></p>
                                     <button id="btn-restore-all" class="button button-secondary" style="width:100%;text-align:center;" data-ids="<?php echo esc_attr( wp_json_encode( $restorable ) ); ?>">
                                         <?php esc_html_e( 'Restore All Originals', 'thisismyurl-heic-support' ); ?>
                                     </button>
-                                    <hr />
                                 <?php endif; ?>
+                                <hr />
                                 <p>
                                     <?php
                                     echo wp_kses_post(
                                         sprintf(
-                                            /* translators: %s: linked site name. */
+                                            /* translators: %s: link to thisismyurl.com */
                                             __( 'Provided free by %s.', 'thisismyurl-heic-support' ),
-                                            '<a href="https://thisismyurl.com/" target="_blank" rel="noopener noreferrer">thisismyurl.com</a>'
+                                            '<a href="' . esc_url( $thisismyurl_url ) . '" target="_blank" rel="noopener noreferrer">thisismyurl.com</a>'
                                         )
                                     );
                                     ?>
                                 </p>
-                                <p><a href="<?php echo esc_url( 'https://github.com/sponsors/thisismyurl' ); ?>" class="button button-secondary" target="_blank" rel="noopener noreferrer" style="width:100%;text-align:center;"><?php esc_html_e( 'Sponsor development', 'thisismyurl-heic-support' ); ?></a></p>
+                                <p><a href="<?php echo esc_url( $donate_url ); ?>" class="button button-secondary" target="_blank" rel="noopener noreferrer" style="width:100%;text-align:center;"><?php esc_html_e( 'Donate to Development', 'thisismyurl-heic-support' ); ?></a></p>
+                            </div>
+                        </div>
+                    </div><!-- #postbox-container-1 -->
+
+                </div><!-- #post-body -->
+            </div><!-- #poststuff -->
+
+            <?php elseif ( 'settings' === $active_tab ) : /* settings tab */ ?>
+
+            <div id="poststuff" style="padding-top:10px;">
+                <div id="post-body" class="metabox-holder columns-1">
+                    <div id="post-body-content">
+
+                        <div class="postbox">
+                            <h2 class="hndle"><span><?php esc_html_e( 'Conversion Settings', 'thisismyurl-heic-support' ); ?></span></h2>
+                            <div class="inside">
+                                <form method="post" action="options.php">
+                                    <?php settings_fields( self::SETTINGS_GROUP ); ?>
+                                    <table class="form-table" role="presentation">
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'Quality Preset', 'thisismyurl-heic-support' ); ?></th>
+                                            <td>
+                                                <fieldset>
+                                                <legend class="screen-reader-text"><?php esc_html_e( 'Quality Preset', 'thisismyurl-heic-support' ); ?></legend>
+                                                <?php
+                                                $quality_presets = array(
+                                                    'web'      => __( 'Web (82) — balanced size/quality', 'thisismyurl-heic-support' ),
+                                                    'print'    => __( 'Print (95) — high fidelity', 'thisismyurl-heic-support' ),
+                                                    'lossless' => __( 'Lossless (100)', 'thisismyurl-heic-support' ),
+                                                    'custom'   => __( 'Custom', 'thisismyurl-heic-support' ),
+                                                );
+                                                $cur_preset = isset( $options['quality_preset'] ) ? $options['quality_preset'] : 'web';
+                                                foreach ( $quality_presets as $val => $label ) :
+                                                    ?>
+                                                    <label style="display:block;margin-bottom:4px;">
+                                                        <input type="radio"
+                                                            name="<?php echo esc_attr( self::OPTION_KEY ); ?>[quality_preset]"
+                                                            value="<?php echo esc_attr( $val ); ?>"
+                                                            <?php checked( $cur_preset, $val ); ?>
+                                                            class="timu-preset-radio" />
+                                                        <?php echo esc_html( $label ); ?>
+                                                    </label>
+                                                <?php endforeach; ?>
+                                                </fieldset>
+                                                <div id="timu-custom-quality" style="margin-top:8px;<?php echo 'custom' !== $cur_preset ? 'display:none;' : ''; ?>">
+                                                    <label for="timu-quality"><?php esc_html_e( 'Custom quality (0–100):', 'thisismyurl-heic-support' ); ?></label>
+                                                    <input id="timu-quality" type="number" min="0" max="100"
+                                                        name="<?php echo esc_attr( self::OPTION_KEY ); ?>[quality]"
+                                                        value="<?php echo esc_attr( $options['quality'] ); ?>"
+                                                        class="small-text" style="margin-left:6px;" />
+                                                </div>
+                                                <p class="description"><?php esc_html_e( 'WebP encoder quality. Web is the balanced default; Lossless preserves every pixel at a larger file size.', 'thisismyurl-heic-support' ); ?></p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><label for="timu-batch-size"><?php esc_html_e( 'Batch Size', 'thisismyurl-heic-support' ); ?></label></th>
+                                            <td>
+                                                <input id="timu-batch-size" type="number" min="1" max="100" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[batch_size]" value="<?php echo esc_attr( $options['batch_size'] ); ?>" class="small-text" />
+                                                <p class="description"><?php esc_html_e( 'Images processed per AJAX request. Lower this if you see timeouts. Default: 10.', 'thisismyurl-heic-support' ); ?></p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'Convert on Upload', 'thisismyurl-heic-support' ); ?></th>
+                                            <td>
+                                                <label>
+                                                    <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[auto_convert_uploads]" value="1" <?php checked( ! empty( $options['auto_convert_uploads'] ) ); ?> />
+                                                    <?php esc_html_e( 'Convert new HEIC/HEIF uploads to WebP automatically.', 'thisismyurl-heic-support' ); ?>
+                                                </label>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'Auto Optimize', 'thisismyurl-heic-support' ); ?></th>
+                                            <td>
+                                                <fieldset>
+                                                    <label style="display:block;margin-bottom:6px;">
+                                                        <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[auto_optimize_enabled]" value="1" <?php checked( ! empty( $options['auto_optimize_enabled'] ) ); ?> />
+                                                        <?php esc_html_e( 'Enable automatic background conversion for pending HEIC/HEIF images.', 'thisismyurl-heic-support' ); ?>
+                                                    </label>
+                                                    <label style="display:block;margin-bottom:6px;">
+                                                        <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[auto_optimize_admin]" value="1" <?php checked( ! empty( $options['auto_optimize_admin'] ) ); ?> />
+                                                        <?php esc_html_e( 'Run a small conversion batch during wp-admin page visits.', 'thisismyurl-heic-support' ); ?>
+                                                    </label>
+                                                    <label style="display:block;margin-bottom:10px;">
+                                                        <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[auto_optimize_cron]" value="1" <?php checked( ! empty( $options['auto_optimize_cron'] ) ); ?> />
+                                                        <?php esc_html_e( 'Run conversion in WP-Cron.', 'thisismyurl-heic-support' ); ?>
+                                                    </label>
+                                                    <p>
+                                                        <label for="timu-auto-batch" style="margin-right:8px;"><?php esc_html_e( 'Images per auto run:', 'thisismyurl-heic-support' ); ?></label>
+                                                        <input id="timu-auto-batch" type="number" min="1" max="25" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[auto_optimize_batch]" value="<?php echo esc_attr( $options['auto_optimize_batch'] ); ?>" class="small-text" />
+                                                    </p>
+                                                    <p>
+                                                        <label for="timu-auto-interval" style="margin-right:8px;"><?php esc_html_e( 'WP-Cron interval:', 'thisismyurl-heic-support' ); ?></label>
+                                                        <select id="timu-auto-interval" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[auto_optimize_interval]">
+                                                            <option value="fifteen_minutes" <?php selected( 'fifteen_minutes', $options['auto_optimize_interval'] ); ?>><?php esc_html_e( 'Every 15 minutes', 'thisismyurl-heic-support' ); ?></option>
+                                                            <option value="hourly" <?php selected( 'hourly', $options['auto_optimize_interval'] ); ?>><?php esc_html_e( 'Hourly', 'thisismyurl-heic-support' ); ?></option>
+                                                            <option value="twicedaily" <?php selected( 'twicedaily', $options['auto_optimize_interval'] ); ?>><?php esc_html_e( 'Twice Daily', 'thisismyurl-heic-support' ); ?></option>
+                                                            <option value="daily" <?php selected( 'daily', $options['auto_optimize_interval'] ); ?>><?php esc_html_e( 'Daily', 'thisismyurl-heic-support' ); ?></option>
+                                                        </select>
+                                                    </p>
+                                                    <p class="description"><?php esc_html_e( 'Enable one or both triggers: admin traffic, cron, or both.', 'thisismyurl-heic-support' ); ?></p>
+                                                </fieldset>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><label for="timu-per-page"><?php esc_html_e( 'Items Per Page', 'thisismyurl-heic-support' ); ?></label></th>
+                                            <td>
+                                                <input id="timu-per-page" type="number" min="5" max="500" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[list_per_page]" value="<?php echo esc_attr( $options['list_per_page'] ); ?>" class="small-text" />
+                                                <p class="description"><?php esc_html_e( 'How many images to show per page in the Pending and Managed Media lists. Default: 25.', 'thisismyurl-heic-support' ); ?></p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'Report Assumptions', 'thisismyurl-heic-support' ); ?></th>
+                                            <td>
+                                                <p>
+                                                    <label for="timu-monthly-hits" style="display:inline-block;min-width:240px;"><?php esc_html_e( 'Estimated monthly image requests', 'thisismyurl-heic-support' ); ?></label>
+                                                    <input id="timu-monthly-hits" type="number" min="0" max="100000000" step="1" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[report_monthly_image_hits]" value="<?php echo esc_attr( $options['report_monthly_image_hits'] ); ?>" class="regular-text" style="max-width:180px;" />
+                                                </p>
+                                                <p>
+                                                    <label for="timu-cost-gb" style="display:inline-block;min-width:240px;"><?php esc_html_e( 'Bandwidth cost per GB (USD)', 'thisismyurl-heic-support' ); ?></label>
+                                                    <input id="timu-cost-gb" type="number" min="0" max="10" step="0.01" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[report_bandwidth_cost_gb]" value="<?php echo esc_attr( $options['report_bandwidth_cost_gb'] ); ?>" class="regular-text" style="max-width:180px;" />
+                                                </p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'Outbound UTM Parameters', 'thisismyurl-heic-support' ); ?></th>
+                                            <td>
+                                                <label>
+                                                    <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[track_outbound_utms]" value="1" <?php checked( ! empty( $options['track_outbound_utms'] ) ); ?> />
+                                                    <?php esc_html_e( 'Add privacy-safe UTM parameters to links to thisismyurl.com.', 'thisismyurl-heic-support' ); ?>
+                                                </label>
+                                                <p class="description"><?php esc_html_e( 'These UTMs include no site IDs, account IDs, user IDs, visitor data, or domain names. They only identify this plugin as the traffic source.', 'thisismyurl-heic-support' ); ?></p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'On Uninstall', 'thisismyurl-heic-support' ); ?></th>
+                                            <td>
+                                                <label>
+                                                    <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[delete_backups_uninstall]" value="1" <?php checked( ! empty( $options['delete_backups_uninstall'] ) ); ?> />
+                                                    <?php esc_html_e( 'Delete all backup files when the plugin is uninstalled.', 'thisismyurl-heic-support' ); ?>
+                                                </label>
+                                                <p class="description"><?php esc_html_e( 'Leave unchecked if you want to keep originals in the backup directory even after removing the plugin.', 'thisismyurl-heic-support' ); ?></p>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <?php submit_button( __( 'Save Settings', 'thisismyurl-heic-support' ) ); ?>
+                                </form>
+                            </div>
+                        </div>
+
+                    </div><!-- #post-body-content -->
+                </div><!-- #post-body -->
+            </div><!-- #poststuff -->
+
+            <?php else : /* report tab */ ?>
+
+            <?php
+            $report_range = isset( $_GET['range'] ) ? sanitize_key( (string) $_GET['range'] ) : '30d'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            if ( ! in_array( $report_range, array( '30d', '90d', '365d', 'all' ), true ) ) {
+                $report_range = '30d';
+            }
+            $report_data = self::get_report_metrics( $report_range );
+            ?>
+
+            <div id="poststuff" style="padding-top:10px;">
+                <div id="post-body" class="metabox-holder columns-1">
+                    <div id="post-body-content">
+                        <div class="postbox">
+                            <h2 class="hndle"><span><?php esc_html_e( 'Business ROI Report', 'thisismyurl-heic-support' ); ?></span></h2>
+                            <div class="inside">
+                                <p class="description"><?php esc_html_e( 'Use these metrics to show the measurable value this plugin has provided over business-friendly time windows.', 'thisismyurl-heic-support' ); ?></p>
+                                <p>
+                                    <a class="button <?php echo '30d' === $report_range ? 'button-primary' : 'button-secondary'; ?>" href="<?php echo esc_url( add_query_arg( array( 'tab' => 'report', 'range' => '30d' ), $base_url ) ); ?>"><?php esc_html_e( 'Last 30 Days', 'thisismyurl-heic-support' ); ?></a>
+                                    <a class="button <?php echo '90d' === $report_range ? 'button-primary' : 'button-secondary'; ?>" href="<?php echo esc_url( add_query_arg( array( 'tab' => 'report', 'range' => '90d' ), $base_url ) ); ?>"><?php esc_html_e( 'Last 90 Days', 'thisismyurl-heic-support' ); ?></a>
+                                    <a class="button <?php echo '365d' === $report_range ? 'button-primary' : 'button-secondary'; ?>" href="<?php echo esc_url( add_query_arg( array( 'tab' => 'report', 'range' => '365d' ), $base_url ) ); ?>"><?php esc_html_e( 'Last 12 Months', 'thisismyurl-heic-support' ); ?></a>
+                                    <a class="button <?php echo 'all' === $report_range ? 'button-primary' : 'button-secondary'; ?>" href="<?php echo esc_url( add_query_arg( array( 'tab' => 'report', 'range' => 'all' ), $base_url ) ); ?>"><?php esc_html_e( 'All Time', 'thisismyurl-heic-support' ); ?></a>
+                                </p>
+
+                                <table class="widefat striped" style="max-width:960px;">
+                                    <tbody>
+                                        <tr>
+                                            <th style="width:340px;"><?php esc_html_e( 'Images Converted in Period', 'thisismyurl-heic-support' ); ?></th>
+                                            <td><?php echo esc_html( number_format_i18n( (int) $report_data['converted_count'] ) ); ?></td>
+                                        </tr>
+                                        <tr>
+                                            <th><?php esc_html_e( 'Total Bandwidth Saved (if each image is requested once)', 'thisismyurl-heic-support' ); ?></th>
+                                            <td><?php echo esc_html( size_format( (int) $report_data['bytes_saved'], 2 ) ); ?></td>
+                                        </tr>
+                                        <tr>
+                                            <th><?php esc_html_e( 'Average Savings per Image', 'thisismyurl-heic-support' ); ?></th>
+                                            <td><?php echo esc_html( number_format_i18n( (float) $report_data['avg_saved_kb'], 2 ) . ' KB' ); ?></td>
+                                        </tr>
+                                        <tr>
+                                            <th><?php esc_html_e( 'Estimated Monthly ROI', 'thisismyurl-heic-support' ); ?></th>
+                                            <td>
+                                                <?php
+                                                echo esc_html(
+                                                    sprintf(
+                                                        /* translators: 1: monthly savings, 2: annual savings */
+                                                        __( '$%1$s / month (about $%2$s / year)', 'thisismyurl-heic-support' ),
+                                                        number_format_i18n( (float) $report_data['monthly_roi'], 2 ),
+                                                        number_format_i18n( (float) $report_data['annual_roi'], 2 )
+                                                    )
+                                                );
+                                                ?>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <p class="description" style="margin-top:10px;">
+                                    <?php
+                                    echo esc_html(
+                                        sprintf(
+                                            /* translators: 1: image hit count, 2: cost per GB */
+                                            __( 'ROI estimate uses %1$s image requests/month and $%2$s bandwidth cost per GB from your settings.', 'thisismyurl-heic-support' ),
+                                            number_format_i18n( (int) $report_data['monthly_hits'] ),
+                                            number_format_i18n( (float) $report_data['cost_per_gb'], 2 )
+                                        )
+                                    );
+                                    ?>
+                                </p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+
+            <?php endif; ?>
+
+        </div><!-- .wrap -->
         <?php
     }
 }
@@ -1441,6 +2031,9 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 }
 
 require_once plugin_dir_path( __FILE__ ) . 'abilities.php';
+
+register_activation_hook( __FILE__, array( 'TIMU_HEIC_Support', 'activate_plugin' ) );
+register_deactivation_hook( __FILE__, array( 'TIMU_HEIC_Support', 'deactivate_plugin' ) );
 
 TIMU_HEIC_Support::init();
 
