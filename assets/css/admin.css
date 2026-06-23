@@ -1,0 +1,39 @@
+/**
+ * HEIC Support — admin page styles
+ *
+ * Scoped to .timu-heic-preflight so these rules do not bleed
+ * into other parts of wp-admin.
+ */
+
+.timu-heic-preflight {
+    margin: 1.5rem 0;
+    max-width: 600px;
+}
+
+.timu-heic-preflight h2 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.timu-heic-preflight__table td,
+.timu-heic-preflight__table th {
+    vertical-align: middle;
+}
+
+/* Colored dot indicator — pass (green) / fail (red) */
+.timu-heic-preflight__indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.timu-heic-preflight__indicator--pass {
+    background-color: #00a32a; /* WP admin success green */
+}
+
+.timu-heic-preflight__indicator--fail {
+    background-color: #d63638; /* WP admin error red */
+}
