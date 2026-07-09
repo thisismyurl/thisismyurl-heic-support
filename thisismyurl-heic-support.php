@@ -3,7 +3,7 @@
  * Plugin Name:       HEIC Support by Christopher Ross
  * Plugin URI:        https://thisismyurl.com/thisismyurl-heic-support/
  * Description:       Convert HEIC/HEIF images from iOS devices to WebP automatically with non-destructive backups and one-click restore.
- * Version:           1.6190.1030
+ * Version:           1.6190.1600
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Christopher Ross
@@ -21,10 +21,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'TIMU_HEIC_VERSION' ) ) {
-	define( 'TIMU_HEIC_VERSION', '1.6190.1030' );
+	define( 'TIMU_HEIC_VERSION', '1.6190.1600' );
 }
 
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-backup-adapter.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-timu-vortops-client.php';
 
 class TIMU_HEIC_Support {
 
@@ -56,6 +57,7 @@ class TIMU_HEIC_Support {
 		add_action( 'wp_ajax_timu_heic_restore_single', array( __CLASS__, 'ajax_restore_single' ) );
 		add_action( 'wp_ajax_timu_heic_restore_all', array( __CLASS__, 'ajax_restore_all' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( __CLASS__, 'add_plugin_action_links' ) );
+		add_action( 'wp_ajax_timu_heic_vortops_test', array( __CLASS__, 'ajax_vortops_test_connection' ) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -109,6 +111,17 @@ class TIMU_HEIC_Support {
 		return $clean;
 	}
 
+	/**
+	 * Whether this server can convert HEIC files locally via Imagick + libheif.
+	 *
+	 * @return bool
+	 */
+	public static function local_conversion_available() {
+		return extension_loaded( 'imagick' )
+			&& class_exists( 'Imagick' )
+			&& in_array( 'HEIC', Imagick::queryFormats(), true );
+	}
+
 	// -------------------------------------------------------------------------
 	// Upload handling
 	// -------------------------------------------------------------------------
@@ -154,8 +167,13 @@ class TIMU_HEIC_Support {
 	// -------------------------------------------------------------------------
 
 	public static function convert_heic_to_webp( $attachment_id ) {
-		if ( ! extension_loaded( 'imagick' ) || ! class_exists( 'Imagick' ) ) {
-			return new WP_Error( 'imagick', __( 'Imagick is not available.', 'thisismyurl-heic-support' ) );
+		$local_ok = self::local_conversion_available();
+
+		if ( ! $local_ok && ! TIMU_Vortops_Client::is_connected() ) {
+			return new WP_Error(
+				'no_converter',
+				__( 'HEIC conversion requires either Imagick with libheif (a server-level PHP extension) or a Vortops cloud account. Your server does not have Imagick with HEIC support installed — this is a server-level limitation, not a plugin restriction. Connect a free Vortops account in Settings to enable cloud conversion.', 'thisismyurl-heic-support' )
+			);
 		}
 
 		$full_path = get_attached_file( $attachment_id );
@@ -176,18 +194,49 @@ class TIMU_HEIC_Support {
 		$rel_path      = (string) get_post_meta( $attachment_id, '_wp_attached_file', true );
 		$new_rel_path  = preg_replace( '/\.(heic|heif)$/i', '.webp', $rel_path );
 
-		// Convert via Imagick directly — wp_get_image_editor doesn't handle HEIC natively.
-		try {
-			$im = new Imagick( $full_path );
-			$im->setImageFormat( 'WEBP' );
-			$im->setCompressionQuality( 82 );
-			$blob = $im->getImageBlob();
-			$im->destroy();
-		} catch ( Exception $e ) {
-			return new WP_Error( 'imagick_error', $e->getMessage() );
+		// Try local Imagick first (faster, no network); fall back to Vortops if connected.
+		$blob = false;
+
+		if ( $local_ok ) {
+			// Imagick directly — wp_get_image_editor doesn't handle HEIC natively.
+			try {
+				$im = new Imagick( $full_path );
+				$im->setImageFormat( 'WEBP' );
+				$im->setCompressionQuality( 82 );
+				$blob = $im->getImageBlob();
+				$im->destroy();
+			} catch ( Exception $e ) {
+				if ( TIMU_Vortops_Client::is_connected() ) {
+					$cloud = TIMU_Vortops_Client::convert( $full_path, $mime );
+					if ( is_wp_error( $cloud ) ) {
+						return new WP_Error(
+							'conversion_failed',
+							sprintf(
+								/* translators: 1: local error message, 2: cloud error message */
+								__( 'Local conversion failed (%1$s) and cloud conversion also failed (%2$s).', 'thisismyurl-heic-support' ),
+								$e->getMessage(),
+								$cloud->get_error_message()
+							)
+						);
+					}
+					$blob = $cloud;
+				} else {
+					return new WP_Error( 'imagick_error', $e->getMessage() );
+				}
+			}
+		} else {
+			$cloud = TIMU_Vortops_Client::convert( $full_path, $mime );
+			if ( is_wp_error( $cloud ) ) {
+				return $cloud;
+			}
+			$blob = $cloud;
 		}
 
-		if ( false === file_put_contents( $new_path, $blob ) ) {
+		if ( false === $blob || '' === $blob ) {
+			return new WP_Error( 'empty_blob', __( 'Conversion produced empty output.', 'thisismyurl-heic-support' ) );
+		}
+
+		if ( false === file_put_contents( $new_path, $blob ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents
 			return new WP_Error( 'write', __( 'Failed to write WebP output file.', 'thisismyurl-heic-support' ) );
 		}
 
@@ -350,6 +399,29 @@ class TIMU_HEIC_Support {
 		wp_send_json_success();
 	}
 
+	public static function ajax_vortops_test_connection() {
+		check_ajax_referer( self::AJAX_NONCE_ACTION, 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( __( 'Unauthorized.', 'thisismyurl-heic-support' ) );
+		}
+
+		$api_key = isset( $_POST['api_key'] ) ? sanitize_text_field( wp_unslash( $_POST['api_key'] ) ) : '';
+		if ( '' === $api_key ) {
+			wp_send_json_error( __( 'Please enter an API key first.', 'thisismyurl-heic-support' ) );
+		}
+
+		$result = TIMU_Vortops_Client::ping_with_key( $api_key );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( $result->get_error_message() );
+		}
+
+		wp_send_json_success( array(
+			'message' => __( 'Connected successfully. Save the settings to activate Vortops on this site.', 'thisismyurl-heic-support' ),
+		) );
+	}
+
 	// -------------------------------------------------------------------------
 	// Queries
 	// -------------------------------------------------------------------------
@@ -454,16 +526,18 @@ class TIMU_HEIC_Support {
 
 		$imagick_ok = extension_loaded( 'imagick' ) && class_exists( 'Imagick' );
 		$checks[] = array(
-			'label' => __( 'Imagick extension', 'thisismyurl-heic-support' ),
-			'pass'  => $imagick_ok,
-			'note'  => $imagick_ok ? '' : __( 'Required for HEIC conversion. Contact your host.', 'thisismyurl-heic-support' ),
+			'label'    => __( 'Imagick extension', 'thisismyurl-heic-support' ),
+			'pass'     => $imagick_ok,
+			'optional' => false,
+			'note'     => $imagick_ok ? '' : __( 'Not available on this server. Vortops cloud conversion can be used as an alternative.', 'thisismyurl-heic-support' ),
 		);
 
 		$heic_ok = $imagick_ok && in_array( 'HEIC', Imagick::queryFormats(), true );
 		$checks[] = array(
-			'label' => __( 'HEIC decoding (libheif)', 'thisismyurl-heic-support' ),
-			'pass'  => $heic_ok,
-			'note'  => $heic_ok ? '' : __( 'libheif must be compiled into Imagick. Contact your host.', 'thisismyurl-heic-support' ),
+			'label'    => __( 'HEIC decoding (libheif)', 'thisismyurl-heic-support' ),
+			'pass'     => $heic_ok,
+			'optional' => false,
+			'note'     => $heic_ok ? '' : __( 'libheif not compiled into Imagick on this server. Vortops cloud conversion can be used as an alternative.', 'thisismyurl-heic-support' ),
 		);
 
 		$upload_dir = wp_upload_dir();
@@ -471,9 +545,18 @@ class TIMU_HEIC_Support {
 		wp_mkdir_p( $backup_dir );
 		$dir_ok = wp_is_writable( $backup_dir );
 		$checks[] = array(
-			'label' => __( 'Backup directory writable', 'thisismyurl-heic-support' ),
-			'pass'  => $dir_ok,
-			'note'  => $dir_ok ? '' : sprintf( __( '%s is not writable.', 'thisismyurl-heic-support' ), $backup_dir ),
+			'label'    => __( 'Backup directory writable', 'thisismyurl-heic-support' ),
+			'pass'     => $dir_ok,
+			'optional' => false,
+			'note'     => $dir_ok ? '' : sprintf( __( '%s is not writable.', 'thisismyurl-heic-support' ), $backup_dir ),
+		);
+
+		$vortops_ok = TIMU_Vortops_Client::is_connected();
+		$checks[] = array(
+			'label'    => __( 'Vortops cloud conversion', 'thisismyurl-heic-support' ),
+			'pass'     => $vortops_ok,
+			'optional' => true,
+			'note'     => $vortops_ok ? '' : __( 'Optional. Connect a Vortops account in Settings to enable cloud conversion when local Imagick support is unavailable.', 'thisismyurl-heic-support' ),
 		);
 
 		return $checks;
@@ -536,8 +619,9 @@ class TIMU_HEIC_Support {
 			'batchSize'  => (int) $options['batch_size'],
 			'perPage'    => (int) $options['per_page'],
 			'actions'    => array(
-				'batch'   => 'timu_heic_process_batch',
-				'restore' => 'timu_heic_restore_single',
+				'batch'       => 'timu_heic_process_batch',
+				'restore'     => 'timu_heic_restore_single',
+				'vortopsTest' => 'timu_heic_vortops_test',
 			),
 			'strings'    => array(
 				'processing'       => __( 'Processing…', 'thisismyurl-heic-support' ),
@@ -571,7 +655,9 @@ class TIMU_HEIC_Support {
 		$managed_ids = self::get_managed_ids();
 		$sponsor_url = 'https://github.com/sponsors/thisismyurl';
 		$checks      = self::preflight_checks();
-		$env_ok      = empty( array_filter( array_column( $checks, 'pass' ), function( $p ) { return ! $p; } ) );
+		$local_ok    = self::local_conversion_available();
+		// The Convert button is enabled when at least one conversion path works.
+		$env_ok      = $local_ok || TIMU_Vortops_Client::is_connected();
 
 		// Save settings.
 		if ( 'POST' === $_SERVER['REQUEST_METHOD'] && isset( $_POST['timu_heic_settings_nonce'] ) ) {
@@ -579,6 +665,20 @@ class TIMU_HEIC_Support {
 			$clean = self::sanitize_options( wp_unslash( $_POST[ self::OPTION_KEY ] ?? array() ) );
 			update_option( self::OPTION_KEY, $clean, false );
 			$options = $clean;
+
+			// Save the shared Vortops API key (shared across all TIMU plugins).
+			if ( isset( $_POST['timu_vortops_api_key'] ) ) {
+				$vortops_key = sanitize_text_field( wp_unslash( $_POST['timu_vortops_api_key'] ) );
+				if ( '' !== $vortops_key ) {
+					update_option( TIMU_Vortops_Client::OPTION_KEY, $vortops_key, false );
+				} else {
+					delete_option( TIMU_Vortops_Client::OPTION_KEY );
+				}
+				// Refresh local_ok / env_ok after key change.
+				$local_ok = self::local_conversion_available();
+				$env_ok   = $local_ok || TIMU_Vortops_Client::is_connected();
+			}
+
 			add_settings_error( 'timu_heic_support', 'saved', __( 'Settings saved.', 'thisismyurl-heic-support' ), 'updated' );
 		}
 
@@ -607,6 +707,21 @@ class TIMU_HEIC_Support {
 
 			<?php if ( 'optimize' === $active_tab ) : ?>
 			<!-- ── Optimize tab ─────────────────────────────────────────── -->
+			<?php if ( ! $local_ok ) : ?>
+			<div class="notice <?php echo TIMU_Vortops_Client::is_connected() ? 'notice-info' : 'notice-warning'; ?> inline" style="margin:12px 0 0;">
+				<p>
+					<?php if ( TIMU_Vortops_Client::is_connected() ) : ?>
+					<strong><?php esc_html_e( 'Using Vortops cloud conversion.', 'thisismyurl-heic-support' ); ?></strong>
+					<?php esc_html_e( "Your server's Imagick extension does not support HEIC files — this is a server-level limitation, not a plugin restriction. Vortops cloud conversion is connected and will be used for all conversions.", 'thisismyurl-heic-support' ); ?>
+					<?php else : ?>
+					<strong><?php esc_html_e( 'Local HEIC conversion is not available on this server.', 'thisismyurl-heic-support' ); ?></strong>
+					<?php esc_html_e( "Your server's Imagick extension is not compiled with HEIC support (libheif). This is a server-level limitation — this plugin does not restrict it. To convert HEIC files, ask your host to enable libheif, or ", 'thisismyurl-heic-support' ); ?>
+					<a href="<?php echo esc_url( add_query_arg( 'tab', 'settings', $base_url ) ); ?>"><?php esc_html_e( 'connect a free Vortops account', 'thisismyurl-heic-support' ); ?></a>
+					<?php esc_html_e( 'to convert in the cloud instead.', 'thisismyurl-heic-support' ); ?>
+					<?php endif; ?>
+				</p>
+			</div>
+			<?php endif; ?>
 			<div id="post-body" class="metabox-holder columns-2">
 
 				<div id="post-body-content">
@@ -771,10 +886,14 @@ class TIMU_HEIC_Support {
 								<tbody>
 									<?php foreach ( $checks as $check ) : ?>
 									<tr>
-										<td><?php echo esc_html( $check['label'] ); ?></td>
+										<td><?php echo esc_html( $check['label'] ); ?>
+											<?php if ( ! empty( $check['optional'] ) ) : ?>
+											<span style="color:#646970;font-size:11px;"> (<?php esc_html_e( 'optional', 'thisismyurl-heic-support' ); ?>)</span>
+											<?php endif; ?>
+										</td>
 										<td>
-											<span class="timu-heic-preflight__indicator timu-heic-preflight__indicator--<?php echo esc_attr( $check['pass'] ? 'pass' : 'fail' ); ?>" aria-hidden="true"></span>
-											<?php echo $check['pass'] ? esc_html__( 'OK', 'thisismyurl-heic-support' ) : esc_html__( 'Not available', 'thisismyurl-heic-support' ); ?>
+											<span class="timu-heic-preflight__indicator timu-heic-preflight__indicator--<?php echo esc_attr( $check['pass'] ? 'pass' : ( ! empty( $check['optional'] ) ? 'info' : 'fail' ) ); ?>" aria-hidden="true"></span>
+											<?php echo $check['pass'] ? esc_html__( 'OK', 'thisismyurl-heic-support' ) : esc_html__( 'Not connected', 'thisismyurl-heic-support' ); ?>
 											<?php if ( ! $check['pass'] && ! empty( $check['note'] ) ) : ?>
 											<p class="description" style="margin:2px 0 0;"><?php echo esc_html( $check['note'] ); ?></p>
 											<?php endif; ?>
@@ -844,6 +963,46 @@ class TIMU_HEIC_Support {
 									</tr>
 								</table>
 								<?php submit_button( __( 'Save settings', 'thisismyurl-heic-support' ) ); ?>
+							</div>
+						</div>
+
+						<!-- Vortops cloud conversion settings -->
+						<div class="postbox">
+							<h2 class="hndle"><span><?php esc_html_e( 'Cloud Conversion (Vortops)', 'thisismyurl-heic-support' ); ?></span></h2>
+							<div class="inside">
+								<?php if ( $local_ok ) : ?>
+								<p><?php esc_html_e( 'Your server supports local HEIC conversion via Imagick. Vortops is optional — connect an account to use it as a cloud backup if local conversion ever fails.', 'thisismyurl-heic-support' ); ?></p>
+								<?php else : ?>
+								<div class="notice notice-warning inline" style="padding:8px 12px;margin-bottom:12px;">
+									<p><?php esc_html_e( "Your server's Imagick extension does not support HEIC files. This is a server-level limitation — this plugin does not restrict it. Connecting a Vortops account enables full cloud-based conversion as a complete alternative.", 'thisismyurl-heic-support' ); ?></p>
+								</div>
+								<?php endif; ?>
+								<table class="form-table" role="presentation">
+									<tr>
+										<th scope="row"><label for="timu_vortops_api_key"><?php esc_html_e( 'API key', 'thisismyurl-heic-support' ); ?></label></th>
+										<td>
+											<input type="password"
+											       id="timu_vortops_api_key"
+											       name="timu_vortops_api_key"
+											       value="<?php echo esc_attr( TIMU_Vortops_Client::get_api_key() ); ?>"
+											       class="regular-text"
+											       placeholder="<?php esc_attr_e( 'Paste your Vortops API key', 'thisismyurl-heic-support' ); ?>" />
+											<button type="button" id="btn-vortops-test" class="button" style="margin-left:6px;">
+												<?php esc_html_e( 'Test connection', 'thisismyurl-heic-support' ); ?>
+											</button>
+											<div id="vortops-test-result" style="margin-top:6px;min-height:20px;"></div>
+											<p class="description">
+												<?php
+												printf(
+													/* translators: %s: link to vortops.com */
+													esc_html__( 'Get a free API key at %s. The key is shared across all thisismyurl plugins — connecting once covers all of them.', 'thisismyurl-heic-support' ),
+													'<a href="https://vortops.com" target="_blank" rel="noopener noreferrer">vortops.com</a>'
+												);
+												?>
+											</p>
+										</td>
+									</tr>
+								</table>
 							</div>
 						</div>
 					</form>

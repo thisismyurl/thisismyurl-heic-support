@@ -8,7 +8,7 @@ Tags: heic, heif, webp, media library, apple images
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.6190.1030
+Stable tag: 1.6190.1600
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -82,6 +82,13 @@ HEIC Support does not collect, transmit, or store any personal data. All image p
 * Bumped version from pre-release (0.x) to full release (1.x).
 * Updated Tested up to: 7.0.
 * Rewrote readme.txt to WordPress.org submission quality with structured FAQ and Privacy Policy sections.
+
+= 1.6190.1600 =
+* **New:** Vortops cloud conversion — when local Imagick + libheif is not available on the server, the plugin can now route HEIC conversions through the Vortops cloud API instead. Local conversion is always preferred; Vortops is a fallback, not a default. Connect a free API key in Settings > HEIC Settings.
+* **New:** Honest capability messaging — when the server cannot convert HEIC files locally, the plugin now clearly explains the server-level reason (not a plugin restriction) and offers a path forward (contact host or connect Vortops). Zero pressure framing.
+* **New:** Vortops test-connection button — enter an API key and test the connection before saving. The same key works across all thisismyurl plugins.
+* **Fix:** Environment panel now correctly flags Vortops as optional so a missing Vortops key never disables the Convert button when local Imagick is working.
+* **Fix:** `$env_ok` (which gates the Convert All button) now reflects whether any conversion path is available, not whether every environment check passes.
 
 = 0.6174.1641 =
 * Added environment preflight check panel (Imagick, HEIC decoding, backup directory writability).

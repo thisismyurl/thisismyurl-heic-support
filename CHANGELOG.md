@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.6190.1600 — 2026-07-09
+
+### Added
+- **Vortops cloud conversion** — when local Imagick + libheif is unavailable, HEIC conversions are routed through the Vortops cloud API. Local conversion is always preferred; Vortops is the fallback. API key is entered in Settings and shared across all thisismyurl plugins. Includes a "Test connection" button that tests without saving.
+- **Honest capability messaging** — when the server lacks HEIC support, the plugin explains the server-level reason (not a plugin restriction) and offers two paths forward: contact the host or connect Vortops. No pressure, no upsell.
+- `TIMU_Vortops_Client` shared client class (`includes/class-timu-vortops-client.php`) — `class_exists` guard so only the first TIMU plugin to load wins; `ping_with_key()`, `convert()`, `sanitize_svg()`, and `get_usage()` all use `wp_remote_*` (never direct curl).
+- `local_conversion_available()` static method — single truth for whether Imagick + libheif is available.
+
+### Fixed
+- `$env_ok` now reflects whether any conversion path works (local OR cloud), not whether every environment check passes. The Convert button is no longer disabled simply because Vortops isn't connected.
+- Environment preflight panel now marks the Vortops row as optional, with an "(optional)" label and a neutral indicator rather than a red fail dot.
+
 ## 0.6174.1641 — 2026-06-23
 
 ### Added
