@@ -28,8 +28,22 @@ if ( ! class_exists( 'TIMU_Vortops_Client' ) ) {
 
 	class TIMU_Vortops_Client {
 
-		const OPTION_KEY = 'timu_vortops_api_key';
-		const API_BASE   = 'https://api.vortops.com/v1';
+		const OPTION_KEY         = 'timu_vortops_api_key';
+		const API_BASE           = 'https://api.vortops.com/v1';
+
+		/**
+		 * Post-meta key for AI-generated alt text cached from /v1/describe.
+		 * Stored as a supplementary cache; does not overwrite the editor's own
+		 * _wp_attachment_image_alt value. The alt-fallback filter reads this key
+		 * as tier 1.5 (after stored core alt, before post title).
+		 */
+		const META_DESCRIBE_ALT  = '_timu_vortops_alt';
+
+		/**
+		 * Post-meta key for AI-generated tags cached from /v1/describe.
+		 * Stored as a JSON-encoded array of keyword strings.
+		 */
+		const META_DESCRIBE_TAGS = '_timu_vortops_tags';
 
 		// ── Key management ────────────────────────────────────────────────────
 
@@ -216,6 +230,104 @@ if ( ! class_exists( 'TIMU_Vortops_Client' ) ) {
 			}
 
 			return wp_remote_retrieve_body( $response );
+		}
+
+		/**
+		 * Request AI-generated alt text and keyword tags from the Vortops cloud.
+		 *
+		 * Calls POST /v1/describe and returns a structured result. The endpoint is
+		 * planned but not yet deployed — callers MUST handle WP_Error gracefully
+		 * (a 404 or network error returns WP_Error, never throws).
+		 *
+		 * Intended usage pattern:
+		 *   1. On upload: if core alt is empty, call describe() and cache to
+		 *      META_DESCRIBE_ALT / META_DESCRIBE_TAGS. Never overwrite core alt.
+		 *   2. Alt-fallback filter: read META_DESCRIBE_ALT as tier 1.5 (after
+		 *      stored core alt, before post title). No API call on render.
+		 *   3. Bulk fill: write describe() result directly to _wp_attachment_image_alt
+		 *      so it appears in the Media Library (explicit user action, not cached).
+		 *
+		 * @param string $file_path Absolute path to the image file.
+		 * @param array  $hints     Optional: 'lang' (ISO-639-1 code, default 'en'),
+		 *                          'max_length' (int, characters), 'use_case'
+		 *                          ('alt_text'|'caption'|'tags', default 'alt_text').
+		 * @return array{alt_text:string,tags:string[],confidence:float}|WP_Error
+		 */
+		public static function describe( $file_path, $hints = array() ) {
+			$key = self::get_api_key();
+			if ( '' === $key ) {
+				return new WP_Error( 'no_key', __( 'No Vortops API key configured.', 'timu-suite' ) );
+			}
+
+			if ( ! file_exists( $file_path ) ) {
+				return new WP_Error( 'missing_file', __( 'Source file does not exist.', 'timu-suite' ) );
+			}
+
+			$file_content = file_get_contents( $file_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			if ( false === $file_content ) {
+				return new WP_Error( 'read_error', __( 'Could not read image file.', 'timu-suite' ) );
+			}
+
+			$boundary = wp_generate_password( 24, false );
+			$filename = basename( $file_path );
+
+			$body  = '--' . $boundary . "\r\n";
+			$body .= 'Content-Disposition: form-data; name="file"; filename="' . $filename . '"' . "\r\n";
+			$body .= 'Content-Type: application/octet-stream' . "\r\n\r\n";
+			$body .= $file_content . "\r\n";
+
+			foreach ( array( 'lang', 'max_length', 'use_case' ) as $hint_key ) {
+				if ( empty( $hints[ $hint_key ] ) ) {
+					continue;
+				}
+				$value = 'max_length' === $hint_key
+					? (string) (int) $hints[ $hint_key ]
+					: sanitize_text_field( (string) $hints[ $hint_key ] );
+				$body .= '--' . $boundary . "\r\n";
+				$body .= 'Content-Disposition: form-data; name="' . $hint_key . '"' . "\r\n\r\n";
+				$body .= $value . "\r\n";
+			}
+
+			$body .= '--' . $boundary . '--' . "\r\n";
+
+			$response = wp_remote_post(
+				self::API_BASE . '/describe',
+				array(
+					'headers' => array(
+						'Authorization' => 'Bearer ' . $key,
+						'Content-Type'  => 'multipart/form-data; boundary=' . $boundary,
+						'Accept'        => 'application/json',
+					),
+					'body'    => $body,
+					'timeout' => 45,
+				)
+			);
+
+			if ( is_wp_error( $response ) ) {
+				return $response;
+			}
+
+			$code   = (int) wp_remote_retrieve_response_code( $response );
+			$parsed = json_decode( wp_remote_retrieve_body( $response ), true );
+
+			if ( 200 !== $code ) {
+				return new WP_Error(
+					'describe_error',
+					isset( $parsed['error'] ) ? $parsed['error'] : sprintf(
+						/* translators: %d: HTTP status code */
+						__( 'Vortops describe failed (HTTP %d).', 'timu-suite' ),
+						$code
+					)
+				);
+			}
+
+			return array(
+				'alt_text'   => isset( $parsed['alt_text'] ) ? sanitize_text_field( (string) $parsed['alt_text'] ) : '',
+				'tags'       => isset( $parsed['tags'] ) && is_array( $parsed['tags'] )
+					? array_map( 'sanitize_text_field', $parsed['tags'] )
+					: array(),
+				'confidence' => isset( $parsed['confidence'] ) ? (float) $parsed['confidence'] : 0.0,
+			);
 		}
 
 		/**
