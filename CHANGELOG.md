@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6190.1640 — 2026-07-09
+
+### Changed
+- **Suite core refactor** — Vortops client, settings UI, and event recording moved to shared `class-timu-suite-core.php`. A single canonical file is synced across all thisismyurl plugins; a change to the core propagates to all of them at once. Same as the Colophon core architecture.
+- Vortops Settings postbox now rendered by `TIMU_Suite_Settings::render_vortops_postbox()` — identical UI across all plugins, including inline test-connection script, driven from one place.
+- `TIMU_Suite_Event::record()` now called after each conversion to record whether the work was done locally or via Vortops cloud.
+- `handle_vortops_save()` now an explicit `admin_post` handler (consistent with the other TIMU plugins) rather than inline POST handling in `render_admin_page()`.
+
 ## 1.6190.1600 — 2026-07-09
 
 ### Added

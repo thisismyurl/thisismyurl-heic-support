@@ -336,40 +336,4 @@ jQuery( function ( $ ) {
         } );
     }() );
 
-    /* ── Vortops connection test ─────────────────────────────── */
-    $( '#btn-vortops-test' ).on( 'click', function () {
-        var $btn    = $( this );
-        var $result = $( '#vortops-test-result' );
-        var apiKey  = $( '#timu_vortops_api_key' ).val().trim();
-
-        if ( ! apiKey ) {
-            $result.html( '<span style="color:#d63638;">&#10005; Enter an API key first.</span>' );
-            return;
-        }
-
-        $btn.prop( 'disabled', true ).text( 'Testing…' );
-        $result.html( '' );
-
-        postJson( {
-            action:  actions.vortopsTest || 'timu_heic_vortops_test',
-            nonce:   nonce,
-            api_key: apiKey
-        } )
-        .done( function ( res ) {
-            if ( res && res.success ) {
-                var msg = res.data && res.data.message ? res.data.message : 'Connected.';
-                $result.html( '<span style="color:#00a32a;">&#10003; ' + msg + '</span>' );
-            } else {
-                var err = res && res.data ? res.data : 'Connection failed.';
-                $result.html( '<span style="color:#d63638;">&#10005; ' + err + '</span>' );
-            }
-        } )
-        .fail( function () {
-            $result.html( '<span style="color:#d63638;">&#10005; Request failed. Check your network connection.</span>' );
-        } )
-        .always( function () {
-            $btn.prop( 'disabled', false ).text( 'Test connection' );
-        } );
-    } );
-
 } );
