@@ -1,115 +1,98 @@
-=== HEIC Support by thisismyurl.com === 
+=== HEIC Support by Christopher Ross ===
+Contributors: thisismyurl
+Plugin URI: https://thisismyurl.com/thisismyurl-heic-support/
+Author: Christopher Ross
+Author URI: https://thisismyurl.com/
+Donate link: https://github.com/sponsors/thisismyurl
+Tags: heic, heif, webp, media library, apple images
+Requires at least: 6.0
+Tested up to: 7.0
+Requires PHP: 7.4
+Stable tag: 1.6190.1030
+License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Contributors: thisismyurl 
-Author: thisismyurl 
-Author URI: https://thisismyurl.com/ 
-Donate link: https://thisismyurl.com/donate/ 
-Support Link: https://thisismyurl.com/contact/ 
-Tags: heic, heif, optimization, webp, apple images
-Requires at least: 6.0 
-Tested up to: 6.9 
-Stable tag: 0.6174.1641
-License: GPLv2 or later 
-License URI: https://www.gnu.org/licenses/gpl-2.0.html 
-GitHub Plugin URI: https://github.com/thisismyurl/thisismyurl-heic-support/ 
-Primary Branch: main 
-
-A free non-destructive HEIC to WebP converter for WordPress: Auto-optimize new Apple device uploads with secure backups and 1-click restore. 
+Convert HEIC/HEIF images from iPhone and iPad uploads to WebP automatically, with non-destructive backups and one-click restore.
 
 == Description ==
 
+Modern iOS and iPadOS devices shoot in HEIC/HEIF by default. That format is compact on device, but most WordPress hosts and browsers don't handle it natively — images don't display, uploads fail, and pages stall while browsers try to decode something they can't read.
 
-Free HEIC Optimizer by thisismyurl is a lightweight, high-performance utility designed to maximize your site speed without the need for expensive monthly subscriptions or external API keys.
+HEIC Support by Christopher Ross converts every HEIC or HEIF file the moment it lands in your Media Library. The original file is never deleted — it moves to a backup folder and can be restored any time with one click, individually or in bulk.
 
-Modern iOS devices capture images in HEIC/HEIF formats, which are often incompatible with web browsers. By converting these images to the modern WebP format, you can significantly reduce file sizes while maintaining high visual quality and broad compatibility.
+= What it does =
 
-This plugin is built with a Safety-First philosophy: every time an image is converted, the original HEIC file is archived in a secure backup folder. If you ever need to revert, a single click restores your original high-resolution file perfectly.
+* Converts HEIC and HEIF uploads to WebP automatically on upload.
+* Batch-converts existing HEIC/HEIF images already in your Media Library via an AJAX-powered tool under Media > HEIC Support.
+* Preserves originals in `uploads/heic-backups/` — the plugin never deletes a source file.
+* One-click restore per image, and a "Restore All" bulk action for a full rollback.
+* Environment preflight panel: confirms Imagick is installed, HEIC decoding is available, and the backup directory is writable before you run anything.
+* Live savings report showing how much storage the conversion has recovered.
 
+= No external services =
 
-= Key Features =
+All conversion runs on your server using PHP's Imagick extension and libheif. Nothing is sent off-site.
 
+= Requirements =
 
-100% Automatic: New HEIC and HEIF uploads are converted and optimized the moment they hit your Media Library.
-
-
-Bulk Processing: Convert your existing library using an AJAX-powered tool that prevents server timeouts.
-
-
-Non-Destructive Workflow: Original HEIC images are moved to /uploads/heic-backups/ for safe keeping.
-
-
-Live Savings Report: View a real-time dashboard showing exactly how many megabytes of server space you have saved.
-
-
-Individual & Bulk Restore: Undo changes for a single image or your entire library at any time.
-
-
-GitHub Integrated: Features a built-in updater to ensure you always have the latest security and performance patches.
+* Imagick PHP extension with libheif support — most modern shared hosts (WP Engine, SiteGround, Kinsta) include this. The plugin's Environment Check panel tells you immediately if anything is missing.
+* WordPress 6.0+ and PHP 7.4+.
 
 == Installation ==
 
-Upload the thisismyurl-heic-support folder to the /wp-content/plugins/ directory.
-
-Activate the plugin through the 'Plugins' menu in WordPress.
-
-Navigate to Media > HEIC Support to access the dashboard.
+1. Upload the plugin folder to `/wp-content/plugins/` or install directly from the WordPress plugin directory.
+2. Activate through the **Plugins** screen.
+3. Go to **Media > HEIC Support**.
+4. Run the Environment Check to confirm your server supports conversion.
+5. Click **Optimize All** to convert existing HEIC/HEIF files, or just let new uploads convert automatically.
 
 == Frequently Asked Questions ==
 
-= Does this delete my original images? = No. It moves them to a backup folder within your uploads directory to ensure you never lose your original high-resolution files.
+= Does this delete my original HEIC images? =
+No. Each original is moved to `uploads/heic-backups/` before conversion. You can restore any image — or all of them — with one click from the Media > HEIC Support screen.
 
+= What happens if I deactivate the plugin? =
+Your converted WebP files stay in place. If you want to revert to the original HEIC files before deactivating, use "Restore All Originals" first. There is no forced revert on deactivation.
 
-= Will my images break if I delete the plugin? = We recommend using the "Restore All" button in the dashboard before uninstallation. This reverts your site back to using your original images.
+= My server doesn't have Imagick or libheif. Can I still use this? =
+Not for HEIC conversion — Imagick with libheif is required. The Environment Check panel on the admin screen tells you exactly what's missing. Most managed WordPress hosts (WP Engine, Kinsta, SiteGround, Cloudways) include the necessary libraries; contact your host if it's missing.
 
+= Does it handle HEIF as well as HEIC? =
+Yes. The plugin processes both `.heic` and `.heif` extensions using the same conversion pipeline.
 
-= Does this support HEIF formats? = Yes! The conversion engine handles both .heic and .heif files from modern smartphones.
+= What format does it convert to? =
+WebP. It is the best balance of compression, quality, and browser support. If you need AVIF output from JPEG/PNG files, see the companion plugin WEBP Support.
 
-== Support, Contributing & Sponsorship ==
+= Will this slow down media uploads? =
+The conversion adds a brief processing step (typically under a second for phone photos). The batch tool uses AJAX so it never times out the browser, regardless of library size.
 
-= I want to support you =
+= Is there a way to undo everything? =
+Yes. "Restore All Originals" on the admin screen restores every previously converted image from backup and returns your library to its pre-plugin state.
 
-I'm building these tools because WordPress developers and site owners deserve straightforward, practical solutions. There's no tracking, no ads, and you don't need to pay to use these plugins.
+== Privacy Policy ==
 
-If they're helpful, here are genuine ways to support the work:
-
-* **Sponsor this project:** Visit https://github.com/sponsors/thisismyurl if sponsorship fits your budget. Sponsorship helps, but it's always optional.
-* **Contribute code or ideas:** Opening a pull request, reporting an issue, or testing edge cases is just as valuable as sponsorship. Helping me improve these plugins is a great way to contribute.
-* **Share your experience:** A review on my [Google My Business profile](https://business.google.com/refer) or a follow on [WordPress.org](https://profiles.wordpress.org/thisismyurl/), [GitHub](https://github.com/thisismyurl), or [LinkedIn](https://linkedin.com/in/thisismyurl) helps others find this work.
-
-= I found a bug or have a feature idea =
-
-* **File an issue on GitHub:** Visit https://github.com/thisismyurl/[plugin-name]/issues and include your WordPress and PHP version.
-* **Start a discussion:** Use the Discussions tab on GitHub for questions or ideas.
-
-= I want to contribute code =
-
-Code contributions are welcome and genuinely valuable:
-
-1. Fork the repository on GitHub.
-2. Create a feature branch (e.g., `feature/improve-safety`).
-3. Make your changes and test thoroughly.
-4. Follow WordPress coding standards.
-5. Open a pull request with a clear description of what changed and why.
-
-I review PRs thoughtfully and appreciate well-tested contributions. Contributing is never required, but it's genuinely helpful.
-
+HEIC Support does not collect, transmit, or store any personal data. All image processing runs locally on your server. No data is sent to external servers.
 
 == Changelog ==
 
+= 1.6190.1030 =
+* Changed plugin name from "HEIC Support by thisismyurl.com" to "HEIC Support by Christopher Ross" for consistency across the plugin line.
+* Removed GitHub Updater headers (`GitHub Plugin URI`, `Primary Branch`) from the plugin file header in preparation for WordPress.org directory submission.
+* Updated Donate link to GitHub Sponsors.
+* Bumped version from pre-release (0.x) to full release (1.x).
+* Updated Tested up to: 7.0.
+* Rewrote readme.txt to WordPress.org submission quality with structured FAQ and Privacy Policy sections.
+
 = 0.6174.1641 =
-
-Added environment preflight check panel to the admin page (Imagick, HEIC decoding, backup dir).
-
-Fixed admin settings link URL (tools.php scope).
+* Added environment preflight check panel (Imagick, HEIC decoding, backup directory writability).
+* Fixed admin settings link URL (tools.php scope).
 
 = 0.6112 =
-
-Initial release of HEIC Support based on the WebP Support architecture.
-
-Fixed GitHub updater directory renaming logic.
-
-Implemented non-destructive backup logic for HEIC files.
+* Initial release based on the WEBP Support plugin architecture.
+* Non-destructive backup logic for HEIC/HEIF files.
+* Batch AJAX converter.
 
 == Upgrade Notice ==
 
-= 0.6174.1641 = Adds environment preflight panel; fixes admin settings link.
+= 1.6190.1030 =
+First full-release (1.x) version. Plugin name updated to "HEIC Support by Christopher Ross" for consistency with the full plugin line. Removing GitHub Updater headers in preparation for WP.org submission.
