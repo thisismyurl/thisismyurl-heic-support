@@ -1,39 +1,78 @@
-/**
- * HEIC Support — admin page styles
- *
- * Scoped to .timu-heic-preflight so these rules do not bleed
- * into other parts of wp-admin.
- */
+/* HEIC Support admin styles */
 
-.timu-heic-preflight {
-    margin: 1.5rem 0;
-    max-width: 600px;
-}
-
-.timu-heic-preflight h2 {
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-.timu-heic-preflight__table td,
-.timu-heic-preflight__table th {
+/* ── Count badge on tab ────────────────────────────────────── */
+.timu-count-badge {
+    display: inline-block;
+    margin-left: 5px;
+    padding: 1px 6px;
+    min-width: 18px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    background: #d63638;
+    color: #fff;
+    border-radius: 9px;
+    text-align: center;
     vertical-align: middle;
 }
 
-/* Colored dot indicator — pass (green) / fail (red) */
+/* ── Two-column layout helpers ─────────────────────────────── */
+@media screen and (min-width: 783px) {
+    #post-body.columns-2 {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+    }
+
+    #post-body.columns-2 #post-body-content {
+        flex: 1 1 0%;
+        min-width: 0;
+    }
+
+    #post-body.columns-2 #postbox-container-1 {
+        flex: 0 0 280px;
+        max-width: 280px;
+    }
+}
+
+/* ── Environment preflight indicators ─────────────────────── */
 .timu-heic-preflight__indicator {
     display: inline-block;
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    margin-right: 6px;
+    margin-right: 5px;
     vertical-align: middle;
 }
 
 .timu-heic-preflight__indicator--pass {
-    background-color: #00a32a; /* WP admin success green */
+    background-color: #00a32a;
 }
 
 .timu-heic-preflight__indicator--fail {
-    background-color: #d63638; /* WP admin error red */
+    background-color: #d63638;
+}
+
+.timu-heic-preflight__table td {
+    vertical-align: top;
+    padding: 6px 8px;
+}
+
+/* ── Progress bar ───────────────────────────────────────────── */
+#fwo-progress-container {
+    margin-top: 12px;
+}
+
+/* ── Pending table failed rows ──────────────────────────────── */
+.timu-failed-row {
+    background-color: #fff8f8 !important;
+}
+
+/* ── Sidebar button block ───────────────────────────────────── */
+#postbox-container-1 .button {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    margin-bottom: 4px;
 }
