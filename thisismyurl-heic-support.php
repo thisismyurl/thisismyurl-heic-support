@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name:       HEIC Support by thisismyurl.com
+ * Plugin Name:       HEIC Support by Christopher Ross
  * Plugin URI:        https://thisismyurl.com/thisismyurl-heic-support/
  * Description:       Automatically convert HEIC/HEIF images from iOS devices to WebP with secure backups.
- * Version:           0.6174.1641
+ * Version:           1.6190.1030
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Christopher Ross
@@ -11,9 +11,7 @@
  * License:           GPL-2.0-or-later
  * Text Domain:       thisismyurl-heic-support
  * Domain Path:       /languages
- * GitHub Plugin URI: https://github.com/thisismyurl/thisismyurl-heic-support
- * Primary Branch:    main
- * Donate link:       https://thisismyurl.com/donate/
+ * Donate link:       https://github.com/sponsors/thisismyurl
  * @package TIMU_HEIC_Support
  */
 
