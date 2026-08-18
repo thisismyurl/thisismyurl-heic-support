@@ -6,7 +6,7 @@ Author URI: https://thisismyurl.com/
 Donate link: https://github.com/sponsors/thisismyurl
 Tags: heic, heif, webp, media library, apple images
 Requires at least: 6.0
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 7.4
 Stable tag: 1.6190.1640
 License: GPLv2 or later
